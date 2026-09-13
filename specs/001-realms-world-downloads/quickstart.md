@@ -4,7 +4,7 @@
 
 **依據**：[計畫](plan.md)、[HTTP 契約](contracts/http-api.md)、[維護契約](contracts/maintenance.md)
 
-**狀態**：T001～T023 最小共用核心已完成，可啟動本機驗證入口；47 項本機測試、型別、ESLint 及建置通過。真實 G0 與完整產品尚未完成；以下後續驗收步驟不代表已通過。
+**狀態**：T001～T023 最小共用核心已完成，可啟動本機驗證入口；50 項本機測試、型別、ESLint 及建置通過。真實 G0 與完整產品尚未完成；以下後續驗收步驟不代表已通過。
 
 ## 1. 前置條件
 
@@ -50,6 +50,8 @@ Sites starter 若要求空目錄，先在獨立暫存目錄建立，再合併必
 | npm run build | 使用 starter 生產建置入口 |
 
 先把本機秘密檔加入 .gitignore，再依維護契約設定人工測試秘密。初始 DOWNLOADS_ENABLED=false；沒有真實 Client-Version／來源主機時不能假裝真實轉接器可用。
+
+Sites 維護秘密移除後必須實際確認舊值回 404。若設定清單已刪除而入口仍接受舊值，先將該秘密設為空字串並部署，確認拒絕後再移除鍵並重新部署核實；本次真實結果見 [G0 平台實測](validation/g0-platform.md)。
 
 ```powershell
 npm ci

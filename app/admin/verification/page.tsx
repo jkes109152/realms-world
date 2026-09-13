@@ -45,7 +45,7 @@ export default function VerificationPage() {
     const abort = new AbortController();
     const timer = setTimeout(() => {
       api<Attempt>(endpoint("connection-step"), { body: { attemptId: attempt.attemptId }, csrf: session.csrfToken, signal: abort.signal })
-        .then((value) => { setAttempt(value); if (value.state !== "pending") void refreshConnection(); })
+        .then((value) => { setAttempt(value); if (value.state !== "pending") { void refreshConnection(); if (value.state !== "authorized") setError(value.state === "expired" ? "此次授權已到期，請重新連接。" : "未能完成 Microsoft／Xbox 授權，請重新確認帳號與服務狀態後再連接。"); } })
         .catch((failure) => { if (!abort.signal.aborted) { if (failure instanceof RetryableRequest) setAttempt((current) => current ? { ...current, retryAfterSeconds: failure.seconds } : null); else { setError(failure.message); setAttempt(null); } } });
     }, Math.max(1000, attempt.retryAfterSeconds * 1000));
     return () => { clearTimeout(timer); abort.abort(); };

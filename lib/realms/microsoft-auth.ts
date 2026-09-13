@@ -81,6 +81,7 @@ export async function advanceDeviceLoginOnce(state: DeviceState, now: number, fe
     return { ...state, [`${stage}Token`]: result, exchangeStage: next[stage], nextPollAt: now };
   } catch (error) {
     if (error instanceof AppError && error.code === "reauth_required") return terminal(state, "denied");
+    if (error instanceof AppError && error.code === "protocol_incompatible") return terminal(state, "failed");
     if (error instanceof AppError && error.status === 503) return { ...state, nextPollAt: now + 5000 };
     throw error;
   }

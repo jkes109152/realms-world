@@ -42,18 +42,25 @@ export async function exchangeXboxOnce(state: XboxState, stage: XboxStage, now: 
   const properties = stage === "user" ? { AuthMethod: "RPS", SiteName: "user.auth.xboxlive.com", RpsTicket: `t=${state.accessToken}` }
     : stage === "device" ? { AuthMethod: "ProofOfPossession", Id: `{${crypto.randomUUID()}}`, DeviceType: "Nintendo", SerialNumber: `{${crypto.randomUUID()}}`, Version: "0.0.0", ProofKey: proof }
     : stage === "title" ? { AuthMethod: "RPS", DeviceToken: nonempty(state.deviceToken), RpsTicket: `t=${state.accessToken}`, SiteName: "user.auth.xboxlive.com", ProofKey: proof }
-    : { UserTokens: [nonempty(state.userToken)], DeviceToken: nonempty(state.deviceToken), TitleToken: nonempty(state.titleToken), OptionalDisplayClaims: ["xid"], ProofKey: proof, SandboxId: "RETAIL" };
+    : { UserTokens: [nonempty(state.userToken)], DeviceToken: nonempty(state.deviceToken), TitleToken: nonempty(state.titleToken), ProofKey: proof, SandboxId: "RETAIL" };
   const paths = { user: "https://user.auth.xboxlive.com/user/authenticate", device: "https://device.auth.xboxlive.com/device/authenticate", title: "https://title.auth.xboxlive.com/title/authenticate", xsts: "https://xsts.auth.xboxlive.com/xsts/authorize" };
   const url = paths[stage];
   const body = JSON.stringify({ RelyingParty: stage === "xsts" ? REALMS_RELYING_PARTY : "http://auth.xboxlive.com", TokenType: "JWT", Properties: properties });
   const { response, data } = await upstreamJson(url, { method: "POST", headers: { "Content-Type": "application/json", Accept: "application/json", "x-xbl-contract-version": stage === "user" ? "2" : "1", Signature: await signXboxRequest(state.proofJwk, url, "", body, now) }, body }, fetcher);
+  // 只記錄固定階段及狀態碼，協助辨識相容性失敗；不記上游內容、權杖或識別資料。
+  if (!response.ok) console.warn("realms_auth_exchange", { stage, status: response.status });
   if (response.status === 401 || response.status === 403) throw new AppError("reauth_required", 409);
-  if (!response.ok) throw new AppError("unavailable", 503);
+  if (response.status === 429 || response.status >= 500) throw new AppError("unavailable", 503);
+  if (!response.ok) throw new AppError("protocol_incompatible", 502);
   const token = record(data);
   if (stage !== "xsts") return nonempty(token.Token);
   const claims = record(token.DisplayClaims).xui;
   if (!Array.isArray(claims) || !claims.length) throw new AppError("reauth_required", 409);
   const claim = record(claims[0]);
+  if (typeof claim.xid !== "string" || !claim.xid) {
+    console.warn("realms_auth_exchange", { stage, status: response.status, reason: "missing_owner_claim" });
+    throw new AppError("reauth_required", 409);
+  }
   const expiresAt = Date.parse(nonempty(token.NotAfter));
   const ownerXuid = nonempty(claim.xid, 64);
   if (!/^\d+$/.test(ownerXuid) || !Number.isFinite(expiresAt) || expiresAt <= now) throw new AppError("reauth_required", 409);
