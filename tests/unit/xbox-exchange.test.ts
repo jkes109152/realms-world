@@ -39,3 +39,29 @@ it("XSTS 缺少穩定擁有者欄位時明確拒絕，不假裝暫時服務異�
       async () => Response.json({ Token: "artificial-xsts", NotAfter: new Date(now + 600000).toISOString(), DisplayClaims: { xui: [{ uhs: "artificial-hash" }] } }))).rejects.toMatchObject({ code: "reauth_required" });
   } finally { warning.mockRestore(); }
 });
+
+it("先以 Xbox relying party 核對身分，再接受相同 user hash 的 Realms 權杖", async () => {
+  const pending = { ...await state(), exchangeStage: "identity" as const };
+  const requests: string[] = [];
+  const fetcher: typeof fetch = async (_url, init) => {
+    const party = JSON.parse(String(init?.body)).RelyingParty; requests.push(party);
+    return Response.json({ Token: party === "http://xboxlive.com" ? "artificial-identity-token" : "artificial-realms-token",
+      NotAfter: new Date(now + 600000).toISOString(), DisplayClaims: { xui: [{ uhs: "same-user-hash", ...(party === "http://xboxlive.com" ? { xid: "123456789" } : {}) }] } });
+  };
+  const identified = await advanceDeviceLoginOnce(pending, now, fetcher);
+  expect(identified.status).toBe("pending");
+  expect(identified.exchangeStage).toBe("xsts");
+  expect(identified.authorization).toBeUndefined();
+  expect(JSON.stringify(identified)).not.toContain("artificial-identity-token");
+  const ready = await advanceDeviceLoginOnce(identified, now + 1, fetcher);
+  expect(ready).toMatchObject({ status: "authorized", authorization: { ownerXuid: "123456789", xstsToken: "artificial-realms-token" } });
+  expect(requests).toEqual(["http://xboxlive.com", "https://pocket.realms.minecraft.net/"]);
+});
+
+it("兩種 relying party 的 user hash 不一致時拒絕借用身分", async () => {
+  const pending = { ...await state(), exchangeStage: "identity" as const };
+  const identified = await advanceDeviceLoginOnce(pending, now, async () => Response.json({ Token: "fixture", NotAfter: new Date(now + 600000).toISOString(), DisplayClaims: { xui: [{ uhs: "first-user", xid: "123456789" }] } }));
+  const denied = await advanceDeviceLoginOnce(identified, now + 1, async () => Response.json({ Token: "fixture", NotAfter: new Date(now + 600000).toISOString(), DisplayClaims: { xui: [{ uhs: "other-user" }] } }));
+  expect(denied.status).toBe("denied");
+  expect(denied.microsoft).toBeUndefined();
+});

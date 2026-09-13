@@ -16,6 +16,14 @@
 
 新增 3 項回歸案例，連同既有測試共 50 項通過；型別、ESLint 與生產建置通過。修正後的真實 Xbox／Realms 連接結果待部署確認，未標成通過。
 
+### 第二次真實觀察與身分步驟
+
+Sites 版本 2（Git `2b2c59218cb52e98ffbcc6a7b7b9deaa9e2839d9`）部署後，2026-09-13 17:45:31 UTC 安全診斷確認 xsts 回 HTTP 200，但沒有穩定擁有者 claim，原因為 missing_owner_claim。工作改為 denied 並清除加密授權狀態，沒有將連線標成成功。這份證據確認卡住原因；先前移除 OptionalDisplayClaims 的變更不足以解決問題。
+
+依同一固定參考的 [Xbox relying party](https://github.com/PrismarineJS/prismarine-auth/blob/b795199dc5fa26059655bb1bc91c7f7f2733b232/src/common/Constants.js)，新增獨立的 Xbox 身分交換，再核對同帳號的 Realms 專用權杖。沒有切換 application、scope 或以 Xbox 通用權杖呼叫 Realms。已同步研究與轉接器契約。
+
+兩個新增案例先失敗，再完成實作後通過：分段取得身分與 Realms 權杖、兩者 user hash 不一致時拒絕。此時共 52 項測試；真實新授權仍待修正版部署及使用者再次連接。
+
 ## 剩餘驗收
 
 成功連接、冷啟動／新網站登入重用、一次真實 refresh token 續期與 XSTS 重建、取消／拒絕／降速／到期、解除晚到結果，仍須逐項記錄。人工測試不能取代真實成功路徑。未完成 T025～T030 前不得開始完整產品故事。

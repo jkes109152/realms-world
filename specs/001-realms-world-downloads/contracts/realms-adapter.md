@@ -37,6 +37,8 @@ DeviceStartResult 可以是 pending（尚在 requesting_code）或 ready（已�
 
 Realms 只使用 relying party `https://pocket.realms.minecraft.net/` 的 XSTS，請求標頭 `Authorization: XBL3.0 x={userHash};{XSTSToken}`。上游 HTTP 最長 10 秒；刷新租約 30 秒並按階段條件續租。不得在 Worker 內等待使用者完成登入，也不得把 `waitUntil` 作持久登入程序。
 
+Realms 專用 XSTS 未必附帶 xid。先以 Xbox 預設 relying party `http://xboxlive.com` 向同一 HTTPS XSTS 端點取得穩定擁有者 XUID，再以相同 user／device／title 與證明金鑰進行 Realms 專用交換；各占一個獨立 step。核對兩者 user hash 及可用的 xid，身分證據到期或不一致即拒絕。Xbox 通用權杖不轉送 Realms、不持久保存，只加密保留必要身分與期限；每次刷新重建這份證據。真實結果記錄於 G0，不能猜測 XUID 或從列表名稱推定擁有者。
+
 ## Realm 與存檔歸屬
 
 | 方法 | 上游路徑 | 必要驗證 |

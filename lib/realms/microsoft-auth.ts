@@ -1,6 +1,6 @@
 import { AppError } from "@/lib/security/errors";
 import { upstreamJson, record, nonempty, retryAt } from "./http";
-import { exchangeXboxOnce, newProofKey, type XboxStage } from "./xbox-auth";
+import { exchangeXboxOnce, newProofKey, type XboxStage, type XboxIdentity } from "./xbox-auth";
 import type { RealmsAuthorization } from "./types";
 
 export const CLIENT_ID = "00000000441cc96b";
@@ -15,6 +15,7 @@ export type DeviceState = {
   microsoft?: { accessToken: string; refreshToken: string; expiresAt: number };
   proofJwk?: JsonWebKey; exchangeStage?: XboxStage | "refresh_microsoft";
   userToken?: string; deviceToken?: string; titleToken?: string; authorization?: RealmsAuthorization;
+  xboxIdentity?: XboxIdentity;
 };
 
 export function expiresAtFromSeconds(now: number, seconds: unknown): number {
@@ -70,14 +71,19 @@ export async function advanceDeviceLoginOnce(state: DeviceState, now: number, fe
     if (token.error || !response.ok) return terminal(state, "denied");
     return { ...state, stage: "exchanging_tokens", exchangeStage: "user", deviceCode: undefined, userCode: undefined, verificationUri: undefined, cookie: undefined,
       microsoft: { accessToken: nonempty(token.access_token), refreshToken: nonempty(token.refresh_token ?? state.microsoft?.refreshToken), expiresAt: expiresAtFromSeconds(now, token.expires_in) },
-      proofJwk: state.proofJwk ?? await newProofKey(), userToken: undefined, deviceToken: undefined, titleToken: undefined, authorization: undefined, nextPollAt: now };
+      proofJwk: state.proofJwk ?? await newProofKey(), userToken: undefined, deviceToken: undefined, titleToken: undefined, xboxIdentity: undefined, authorization: undefined, nextPollAt: now };
   }
   const stage = state.exchangeStage;
   if (!stage || !state.proofJwk || !state.microsoft) return terminal(state, "failed");
   try {
     const result = await exchangeXboxOnce({ ...state, proofJwk: state.proofJwk, accessToken: state.microsoft.accessToken }, stage, now, fetcher);
+    if (stage === "identity" && typeof result !== "string") {
+      // Xbox 通用權杖不送給 Realms；只留下同一次交換的身分與 user hash。
+      const { ownerXuid, userHash, expiresAt } = result;
+      return { ...state, xboxIdentity: { ownerXuid, userHash, expiresAt }, exchangeStage: "xsts", nextPollAt: now };
+    }
     if (typeof result !== "string") return { ...state, status: "authorized", authorization: result, nextPollAt: now };
-    const next: Record<XboxStage, XboxStage> = { user: "device", device: "title", title: "xsts", xsts: "xsts" };
+    const next: Record<XboxStage, XboxStage> = { user: "device", device: "title", title: "identity", identity: "xsts", xsts: "xsts" };
     return { ...state, [`${stage}Token`]: result, exchangeStage: next[stage], nextPollAt: now };
   } catch (error) {
     if (error instanceof AppError && error.code === "reauth_required") return terminal(state, "denied");

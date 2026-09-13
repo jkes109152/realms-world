@@ -35,8 +35,9 @@
 - prismarine-auth：`b795199dc5fa26059655bb1bc91c7f7f2733b232`。
 - prismarine-realms：`39787ccf0109e0135c8968b0d0e81f4ebbeac200`。
 - `live` 流程、Minecraft Nintendo Switch title：`client_id=00000000441cc96b`、`deviceType=Nintendo`、scope 為 `service::user.auth.xboxlive.com::MBI_SSL`。
-- Microsoft token → Xbox user／device／title token → Realms 專用 XSTS。
+- Microsoft token → Xbox user／device／title token → Xbox 身分 XSTS → Realms 專用 XSTS。
 - XSTS relying party 為 `https://pocket.realms.minecraft.net/`；Realms 標頭為 `XBL3.0 x={userHash};{XSTSToken}`。不使用 multiplayer relying party、Minecraft multiplayer chain 或 PlayFab 作替代。
+- 2026-09-14 真實 G0 發現 Realms 專用 XSTS 的 HTTP 200 回應沒有 xid，因此先向同一 XSTS HTTPS 端點以參考預設的 `http://xboxlive.com` relying party 取得穩定 XUID，再以相同 user／device／title token 與證明金鑰取得 Realms 權杖。兩者 user hash 必須一致，若 Realms 也有 xid 則必須相符；Xbox 通用權杖不送給 Realms，也不保留於連線封裝。身分摘要只加密保存，續期重新取得。此新增身分步驟仍待真實成功驗證，不能當作 G0 已通過。
 - `REALMS_CLIENT_VERSION` 為必要部署參數，值由真實驗證確認，不能直接以套件的 `0.0.0` 預設值宣稱可用。
 
 **理由**：現有參考流程包含檔案快取與跨請求授權狀態；下載 helper 會讀取整個 Buffer。第三方套件可作研究來源，但不代表 Microsoft 保證支援第三方網站使用此 title。
