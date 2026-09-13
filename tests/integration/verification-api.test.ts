@@ -22,6 +22,7 @@ function request(operation: string, token?: string, body?: unknown, csrf?: strin
   });
 }
 it("驗證入口要求有效管理員 session", async () => {
+  expect((await GET(request("association"), context("association"))).status).toBe(401);
   expect((await GET(request("connection"), context("connection"))).status).toBe(401);
   const session = await admin();
   await env.DB.prepare("DELETE FROM admin_sessions").run();
@@ -37,6 +38,8 @@ it("未知操作、方法錯誤、缺 CSRF 與跨來源操作均拒絕", async (
 });
 it("不接收任意 URL 或 SQL，未發布世界與舊票都拒絕", async () => {
   const session = await admin();
+  expect((await GET(new Request(request("association", session.token).url + "?worldId=unknown&url=https://internal.invalid", request("association", session.token)), context("association"))).status).toBe(400);
+  expect((await GET(new Request(request("association", session.token).url + "?worldId=unknown", request("association", session.token)), context("association"))).status).toBe(404);
   expect((await POST(request("downloads", session.token, { worldId: "unknown", selection: { kind: "latest" }, url: "https://internal.invalid" }, session.csrfToken), context("downloads"))).status).toBe(400);
   expect((await POST(request("downloads", session.token, { worldId: "unknown", selection: { kind: "latest" } }, session.csrfToken), context("downloads"))).status).toBe(404);
   const form = new Request(`${origin}/api/admin/verification/redeem`, { method: "POST", headers: { Cookie: `__Host-realms_session=${session.token}`, Origin: origin, "Content-Type": "application/x-www-form-urlencoded" }, body: new URLSearchParams({ ticket: "a".repeat(43), csrfToken: session.csrfToken }) });

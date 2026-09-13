@@ -23,3 +23,7 @@
 Sites 版本 5（Git `c93eb8b0cf21c68abe9c745f9e2eb3eb4a0a9290`）於 2026-09-13 23:04:03 UTC 部署成功，環境 revision 5 使用 `REALMS_CLIENT_VERSION=1.26.45`。在使用者已登入的 Chrome 管理頁按「讀取世界」後，畫面呈現 6 個欄位，沒有錯誤；同一私人 Sites 的 D1 讀回為 2 個擁有者 Realm、6 個欄位，均屬目前連線世代。Realm 可用狀態分別為 available 及 unavailable；不將不可用 Realm 描述成可下載。
 
 此結果確認上述 Client-Version 已通過真實世界與欄位列表請求，並已核對 ownerUUID 與授權擁有者相等。所有欄位的 association_status 仍為 unverifiable、published=0；尚不能證明空欄位、最新／歷史來源身分及非作用中欄位歸屬。未取得檔案，不宣稱下載或匯入成功。
+
+## 發布問題調查
+
+使用者回報發布按鈕停用。程式確認 projectSlots 與 verifiedBackupAssociation 尚未填入真實映射，所有非空欄位均保守拒絕，並非使用者操作錯誤。新增受同一管理員／擁有者限制的唯讀 association 檢查，先取得官方欄位與備份結構摘要；不修改 published、不產生下載描述、不切換作用中欄位。兩項新增測試先因模組不存在而失敗，再完成實作後通過，涵蓋固定端點、私人值不輸出及受邀 Realm 不查備份。真實摘要待部署後核對。

@@ -120,6 +120,8 @@ G0 共用核心階段即提供最小發布／下架服務；後續 US3 延伸同
 | GET /api/admin/verification/{operation} | connection、worlds、archives、download-status | connection／worlds 沿用管理投影；archives 以 worldId 查已核對且已發布欄位；download-status 以 jobId 與 X-Download-Capability 查同一工作 |
 | POST /api/admin/verification/{operation} | connection-start、connection-step、connection-cancel、disconnect、publication、downloads、download-step、redeem | 只委派至同一授權、發布、下載與串流核心；不接受任意 URL／SQL／操作名稱 |
 
+G0 另提供 GET association，僅接受 worldId，要求有效管理員 session，並將 worldId 對應至目前連線世代且擁有者相符的欄位；之後只讀取該 Realm 的官方詳情及備份端點。它可在未發布時檢查發布條件，但不提供檔案、不變更發布與作用中欄位。瀏覽器只收到備份數量與待核對原因；安全診斷只記欄位名稱／型別、數量及明示 slot 欄位的相等計數，不記私人原始值、ID、名稱或憑證。結構摘要是研究證據，不能直接將欄位標為 verified。
+
 POST 的 connection-start／disconnect 使用空物件；connection-step／connection-cancel 使用 `{attemptId}`。publication 使用 `{worldId,published,expectedVersion,acknowledgeAllArchives?}`，發布條件與正式發布 API 完全相同。downloads 使用 `{worldId,selection}`；download-step 使用 `{jobId}` 與 capability。這些操作的成功資料、錯誤及頻率規則沿用對應正式契約，connection-cancel／disconnect 回 204。未知 operation 回 404，白名單但方法錯誤回 405。
 
 GET connection 附加 `pendingAttempt`：僅目前有效 session、credential_version 與連線 generation 同時符合建立者時，回傳既有授權工作的安全投影（attemptId、state、stage、userCode、verificationUri、expiresAt、retryAfterSeconds）；其餘情況為 null。重新載入頁面可接續分次 step，遵守既有輪詢時間與租約；過期代碼不再顯示，由下一次受保護 step 結束工作。不回傳裝置秘密、加密狀態或 token，也不移轉其他 session 的授權。

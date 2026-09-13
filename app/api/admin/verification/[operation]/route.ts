@@ -4,6 +4,7 @@ import { connection, disconnect } from "@/lib/db/connections";
 import { startConnection, stepConnection, readConnectionState } from "@/lib/realms/connection-service";
 import { refreshWorlds } from "@/lib/realms/world-service";
 import { setPublication } from "@/lib/realms/publication-service";
+import { inspectStoredWorldAssociation } from "@/lib/realms/association-inspection";
 import { verificationArchives, createVerificationDownload, stepVerificationDownload, verificationStatus, redeemVerificationDownload } from "@/lib/downloads/verification-service";
 import { AppError, errorResponse, jsonResponse, safeHeaders } from "@/lib/security/errors";
 import { readJson, readForm, objectInput } from "@/lib/security/request-policy";
@@ -11,7 +12,7 @@ import { consumeLimits, sourceDigest } from "@/lib/security/rate-limit";
 import type { Selection } from "@/lib/realms/types";
 
 type RouteContext = { params: Promise<{ operation: string }> };
-const readOperations = new Set(["connection", "worlds", "archives", "download-status"]);
+const readOperations = new Set(["connection", "worlds", "archives", "association", "download-status"]);
 const writeOperations = new Set(["connection-start", "connection-step", "connection-cancel", "disconnect", "publication", "downloads", "download-step", "redeem"]);
 function operationAllowed(operation: string, method: "GET" | "POST") {
   if (!readOperations.has(operation) && !writeOperations.has(operation)) throw new AppError("not_found", 404);
@@ -38,9 +39,10 @@ export async function GET(request: Request, context: RouteContext) {
     const { db, context: admin } = await adminRequest(request);
     const { operation } = await context.params; operationAllowed(operation, "GET");
     const params = new URL(request.url).searchParams;
-    if ([...params.keys()].some((key) => !(operation === "archives" ? ["worldId"] : operation === "download-status" ? ["jobId"] : []).includes(key))) throw new AppError("invalid_request");
+    if ([...params.keys()].some((key) => !(["archives", "association"].includes(operation) ? ["worldId"] : operation === "download-status" ? ["jobId"] : []).includes(key))) throw new AppError("invalid_request");
     if (operation === "connection") return jsonResponse(await readConnectionState(bindings(), admin));
     if (operation === "worlds") return jsonResponse({ items: (await refreshWorlds(bindings())).results });
+    if (operation === "association") return jsonResponse(await inspectStoredWorldAssociation(bindings(), id(params.get("worldId"))));
     if (operation === "archives") {
       const archives = await verificationArchives(bindings(), id(params.get("worldId")));
       return jsonResponse({ items: archives.map((item) => ({ archiveId: item.archiveId, kind: item.kind, savedAt: item.savedAt === null ? null : new Date(item.savedAt).toISOString(), sizeBytes: item.sizeBytes, gameVersion: item.gameVersion })) });

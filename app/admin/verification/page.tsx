@@ -32,6 +32,7 @@ export default function VerificationPage() {
   const [attempt, setAttempt] = useState<Attempt | null>(null), [worlds, setWorlds] = useState<World[]>([]);
   const [acknowledged, setAcknowledged] = useState<Record<string, boolean>>({}), [archives, setArchives] = useState<Record<string, Archive[]>>({});
   const [job, setJob] = useState<Job | null>(null), [submitted, setSubmitted] = useState(false);
+  const [associationChecks, setAssociationChecks] = useState<Record<string, string>>({});
   useVerificationTools({ signedIn: !!session, connection, loadedWorlds: worlds.length, publishedWorlds: worlds.filter((world) => world.published).length, downloadState: job?.state ?? null });
   const refreshConnection = useCallback(async () => {
     const value = await api<{state:string;pendingAttempt:Attempt|null}>(endpoint("connection"));
@@ -93,6 +94,10 @@ export default function VerificationPage() {
         <section className="rw-panel"><div className="rw-section-heading"><span className="rw-number">02</span><h2>世界與驗證範圍</h2><Button className="ml-auto" variant="outline" disabled={busy || connection !== "connected"} onClick={() => void action(async () => { setWorlds((await api<{items:World[]}>(endpoint("worlds"))).items); })}><RefreshCw /> 讀取世界</Button></div>
           {!worlds.length ? <div className="rw-empty"><Box size={32} /><h3>還沒有讀取世界</h3><p>連接完成後，讀取擁有者帳號中的 Realms 欄位。</p></div> : worlds.map((world) => <article key={world.worldId} className="rw-world"><p className="rw-kicker">{world.realmName} · 欄位 {world.slotId}</p><h3>{world.displayName}</h3><p className="rw-muted">{world.published ? "已發布至受保護的驗證範圍" : world.associationStatus === "verified" ? "已確認歸屬，尚未發布" : "尚無可靠的存檔歸屬證據，無法發布"}</p>
             {world.associationStatus === "verified" && !world.published ? <Label className="rw-check"><Checkbox checked={!!acknowledged[world.worldId]} onCheckedChange={(checked) => setAcknowledged((current) => ({ ...current, [world.worldId]: checked === true }))} />確認發布此欄位的最新、全部現存與未來可用歷史</Label> : null}
+            {world.associationStatus === "unverifiable" && <><Button variant="outline" disabled={busy} onClick={() => void action(async () => {
+              const result = await api<{backupCount:number;message:string}>(`${endpoint("association")}?worldId=${encodeURIComponent(world.worldId)}`);
+              setAssociationChecks((current) => ({ ...current, [world.worldId]: `已讀取 ${result.backupCount} 份備份。${result.message}` }));
+            })}>檢查發布條件</Button>{associationChecks[world.worldId] && <p className="rw-small" role="status">{associationChecks[world.worldId]}</p>}</>}
             <div className="rw-actions"><Button disabled={busy || (!world.published && (world.associationStatus !== "verified" || !acknowledged[world.worldId]))} variant={world.published ? "outline" : "default"} onClick={() => publish(world)}>{world.published ? "下架驗證世界" : "發布供驗證"}</Button>{!!world.published && <><Button variant="outline" disabled={busy} onClick={() => download(world.worldId)}><Download /> 準備最新存檔</Button><Button variant="ghost" disabled={busy} onClick={() => void action(async () => { const value = await api<{items:Archive[]}>(`${endpoint("archives")}?worldId=${encodeURIComponent(world.worldId)}`); setArchives((current) => ({ ...current, [world.worldId]: value.items })); })}>讀取歷史存檔</Button></>}</div>
             {archives[world.worldId]?.map((archive) => <div key={archive.archiveId} className="rw-archive"><span>{archive.savedAt ? new Date(archive.savedAt).toLocaleString("zh-TW", { timeZone: "Asia/Taipei" }) : "存檔時間未知"}</span><Button size="sm" variant="outline" disabled={busy || !world.published} onClick={() => download(world.worldId, archive.archiveId)}>準備這份歷史</Button></div>)}</article>)}
         </section>

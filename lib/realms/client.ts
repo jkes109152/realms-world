@@ -10,7 +10,7 @@ function headers(auth: RealmsAuthorization, version: string) {
   return { Authorization: `XBL3.0 x=${auth.userHash};${auth.xstsToken}`, "Client-Version": version, Accept: "application/json" };
 }
 
-async function read(path: string, auth: RealmsAuthorization, version: string, fetcher: typeof fetch) {
+export async function readRealmsRecord(path: string, auth: RealmsAuthorization, version: string, fetcher: typeof fetch) {
   const result = await upstreamJson(`${ORIGIN}${path}`, { headers: headers(auth, version) }, fetcher);
   if (result.response.status === 401 || result.response.status === 403) throw new AppError("reauth_required", 409);
   if (!result.response.ok) throw new AppError("unavailable", 503);
@@ -18,13 +18,13 @@ async function read(path: string, auth: RealmsAuthorization, version: string, fe
 }
 
 export async function listOwnedRealms(auth: RealmsAuthorization, version: string, now: number, fetcher: typeof fetch = fetch) {
-  const data = await read("/worlds", auth, version, fetcher);
+  const data = await readRealmsRecord("/worlds", auth, version, fetcher);
   if (!Array.isArray(data.servers)) throw new AppError("unavailable", 503);
   return selectOwnedRealms(data.servers, auth.ownerXuid, now);
 }
 
 export async function listWorldSlots(auth: RealmsAuthorization, realmId: string, version: string, now: number, fetcher: typeof fetch = fetch) {
-  const data = await read(`/worlds/${encodeURIComponent(sourceId(realmId))}`, auth, version, fetcher);
+  const data = await readRealmsRecord(`/worlds/${encodeURIComponent(sourceId(realmId))}`, auth, version, fetcher);
   if (sourceId(data.id) !== realmId) throw new AppError("slot_unverifiable", 409);
   return projectSlots(data, auth.ownerXuid, now);
 }
@@ -34,7 +34,7 @@ export async function listBackupsForVerifiedSlot(auth: RealmsAuthorization, slot
   return collectVerifiedBackups(async (cursor) => {
     // 凍結參考沒有分頁協定；若服務新增游標，先拒絕，待 G0 核對後再實作。
     if (cursor) throw new AppError("slot_unverifiable", 409);
-    const data = await read(`/worlds/${encodeURIComponent(sourceId(slot.sourceRealmId))}/backups`, auth, version, fetcher);
+    const data = await readRealmsRecord(`/worlds/${encodeURIComponent(sourceId(slot.sourceRealmId))}/backups`, auth, version, fetcher);
     if (!Array.isArray(data.backups) || data.nextCursor || data.nextPage || data.hasMore) throw new AppError("slot_unverifiable", 409);
     return { items: data.backups, nextCursor: null };
   }, verifiedBackupAssociation, slot.sourceSlotId, worldId, now);
