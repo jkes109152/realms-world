@@ -1,37 +1,37 @@
-# Specification Quality Checklist: Realms World 公開世界下載站
+# 規格品質檢查表： Realms World 公開世界下載站
 
-**Purpose**: 在技術規劃前檢查功能規格的完整性、可理解性與可驗收性。
-**Created**: 2026-09-13
-**Feature**: [spec.md](../spec.md)
-**Reviewer**: Codex，依本次對話已確認的需求進行逐項審查。
-**Marker Semantics**: `[x]` 只表示需求品質已檢查通過，不表示功能已實作或真實串接已通過。
+**目的**： 在技術規劃前檢查功能規格的完整性、可理解性與可驗收性。
+**建立日期**： 2026-09-13
+**功能規格**： [spec.md](../spec.md)
+**審查者**： Codex，依本次對話已確認的需求進行逐項審查。
+**標記意義**： `[x]` 只表示需求品質已檢查通過，不表示功能已實作或真實串接已通過。
 
-## Content Quality
+## 內容品質
 
-- [x] CHK001 No implementation details (languages, frameworks, APIs).
-- [x] CHK002 Focused on user value and business needs.
-- [x] CHK003 Written for non-technical stakeholders.
-- [x] CHK004 All mandatory sections completed.
+- [x] CHK001 不含程式語言、框架或介面實作等技術細節。
+- [x] CHK002 聚焦使用者價值與產品需求。
+- [x] CHK003 非技術參與者能理解文件內容。
+- [x] CHK004 所有必填章節皆已完成。
 
-## Requirement Completeness
+## 需求完整性
 
-- [x] CHK005 No unresolved clarification markers remain.
-- [x] CHK006 Requirements are testable and unambiguous.
-- [x] CHK007 Success criteria are measurable.
-- [x] CHK008 Success criteria are technology-agnostic.
-- [x] CHK009 All acceptance scenarios are defined.
-- [x] CHK010 Edge cases are identified.
-- [x] CHK011 Scope is clearly bounded.
-- [x] CHK012 Dependencies and assumptions identified.
+- [x] CHK005 沒有尚未解決的需求澄清標記。
+- [x] CHK006 需求可驗收且沒有歧義。
+- [x] CHK007 成功標準可量測。
+- [x] CHK008 成功標準不依賴特定實作技術。
+- [x] CHK009 所有驗收情境皆已定義。
+- [x] CHK010 已辨識邊界情況。
+- [x] CHK011 功能範圍與排除項目明確。
+- [x] CHK012 已明列依賴與假設。
 
-## Feature Readiness
+## 功能規劃就緒程度
 
-- [x] CHK013 All functional requirements have clear acceptance criteria.
-- [x] CHK014 User scenarios cover primary flows.
-- [x] CHK015 Feature meets measurable outcomes defined in Success Criteria.
-- [x] CHK016 No implementation details leak into specification.
+- [x] CHK013 所有功能需求都有明確驗收條件。
+- [x] CHK014 使用者情境涵蓋主要操作流程。
+- [x] CHK015 需求已定義對應的可量測成果。
+- [x] CHK016 功能規格未混入實作設計。
 
-## Review Evidence
+## 審查依據
 
 | 檢查範圍 | 規格依據 | 判定 |
 | --- | --- | --- |
@@ -42,9 +42,9 @@
 | 故障與大型下載 | US1.5–US1.6、US4.3–US4.4；FR-021–FR-024；SC-005–SC-007 | 有可量測負載及失效情境，明確區分模擬與真實驗收 |
 | 紀錄與體驗 | US5；FR-025–FR-027；SC-008–SC-010 | 狀態語意、保存期限、裝置與可及性條件明確 |
 | 實作細節分離 | spec.md 描述使用者需求；Sites、D1、串流策略與原始碼來源保存在 planning-input.md／憲章 | 通過 |
-| 範圍與依賴 | Assumptions；明列單一管理員、單一 Microsoft 連線、多世界欄位、無排程／雲端世界保存 | 通過 |
+| 範圍與依賴 | 假設與依賴；明列單一管理員、單一 Microsoft 連線、多世界欄位、無排程／雲端世界保存 | 通過 |
 
-## Notes
+## 備註
 
 - 審查輪次：第 1 輪修正公開錯誤訊息與未公開世界存在性保護的界線；第 2 輪全部通過。
 - FR-022 明確區分管理員可見原因與未知／未公開內容的一致公開回應，避免 FR-019 互相矛盾。
@@ -52,4 +52,5 @@
 - 30 天紀錄保存、3 個並行下載及 1 GiB 模擬驗收檔屬已明載的合理預設，不是使用者提供的現況數字。
 - 真實世界大小、Sites 相容性、授權續期與存檔欄位對應屬待驗證外部依賴，
   不表示產品需求有未回答的澄清問題，也不能當作驗證已通過。
-- 下一步可執行 `$speckit-plan`；目前沒有必須由使用者再次決定的需求歧義。
+- 已依憲章 v2.0.0 將供人閱讀的敘述改為繁體中文，保留需求編號與技術識別字；需求內容及既有標記含義不變。
+- 技術規劃以 plan.md 及相關設計文件為準；本表不代表真實串接或網站驗收已通過。

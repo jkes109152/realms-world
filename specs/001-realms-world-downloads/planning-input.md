@@ -9,14 +9,14 @@
 
 - 網站部署於 Sites，正式網址為 `https://realms.jkesbyebye.com`，DNS 由 Bluehost 管理。
 - GitHub 主儲存庫為 `https://github.com/jkes109152/realms-world`；目前功能分支為
-  `codex/001-realms-world-downloads`，Spec Kit 功能目錄獨立使用 `001-realms-world-downloads`。
+  `001-realms-world-downloads`，Spec Kit 功能目錄獨立使用 `001-realms-world-downloads`。
 - 前後端使用 Sites 的 React／TypeScript 建置方式，部署在同一個 Site。
   D1 保存管理設定、工作階段、加密連線資料及紀錄；世界檔不進入 D1、R2 或其他持久檔案儲存。
 - 自製帳密系統提供唯一管理員登入；不以 ChatGPT 登入取代，不開放一般註冊。
   Sites 正式公開存取設定必須允許匿名訪客進入下載站，後台由應用程式自行保護。
 - 管理員在 Microsoft 授權頁面完成連接；授權資料只留在後端並加密，金鑰由部署秘密管理。
-- 本次只啟動 SDD 的憲章與功能規格階段，不建立應用程式、不啟動 Microsoft 登入、
-  不註冊或發布 Site、不修改 DNS，也不以此交接文件替代後續技術規劃。
+- 此交接文件原於憲章與功能規格階段建立，當時未建立應用程式、啟動 Microsoft 登入、
+  註冊或發布 Site、修改 DNS。正式技術設計現已記錄於 [plan.md](plan.md) 及其關聯文件。
 
 ## 第一個實作里程碑：驗證 Sites 與 Realms 相容性
 
