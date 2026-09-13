@@ -87,6 +87,8 @@
 
 **理由**：不以快速 SHA-256 儲存密碼，不將可撤銷工作階段做成不查資料庫的長期 JWT。D1 原子條件更新及 batch 負責重放、發布版本、連線世代與續期競爭；不得將跨 await 的讀取及寫入當作交易。
 
+**條件失敗的處理**：SQLite 的 UPDATE 影響 0 筆不算 SQL 錯誤，僅包進 D1 batch 不會自動撤回其他寫入。維護流程採資料庫內 CASE 加 guard_passed CHECK 作批次前置斷言，使版本不符與重放均整批回滾；一般改密碼清理只涵蓋預期版本及更舊 sessions，不誤刪較新登入。這是設計決策，仍須 G0 驗證 D1 實際語意。[SQLite UPDATE](https://www.sqlite.org/lang_update.html)、[D1 batch](https://developers.cloudflare.com/d1/worker-api/d1-database/#batch)
+
 **替代方案**：PBKDF2 的高迭代建議與 Workers 已知運算限制有衝突；本機執行成功不等於 hosted Worker 接受，故選原生 scrypt 作首選並排入實際 CPU／記憶體驗證。直接使用完整 Node 授權套件的明文檔案快取不採用。
 
 密碼雜湊首選 scrypt 的 N=16384、r=8、p=5、maxmem=32 MiB、輸出 32 bytes，對應 OWASP 建議配置；Workers 的 Node crypto 支援 scrypt，但仍須驗證 Sites 實際成本。[OWASP 密碼儲存](https://cheatsheetseries.owasp.org/cheatsheets/Password_Storage_Cheat_Sheet.html)、[Workers Node crypto](https://developers.cloudflare.com/workers/runtime-apis/nodejs/crypto/)
@@ -97,7 +99,7 @@ PBKDF2 的限制及本機覆寫差異來自 [workerd 限制程式碼](https://gi
 
 ## 7. 30 天紀錄與無排程清理
 
-**決策**：所有紀錄查詢強制 `created_at >= now - 30 days`。一般請求觸發有界分批刪除過期資料；裝置碼、票據、短期工作與工作階段同樣在使用時檢查到期。過期資料即使尚未實體刪除也不得被讀取或使用。
+**決策**：所有紀錄查詢強制 30 天窗口，操作事件以 created_at、下載觀察以 requested_at 判斷。下載準備期限 10 分鐘與狀態觀察期限 30 天分開；非敏感工作列陪同紀錄保留，密文描述及票據按短期期限清除。一般請求按外鍵順序先刪到期觀察、再刪票據與工作，每批總異動最多 500 筆；超過 30 天的晚到觀察不能重建紀錄。裝置碼、票據、準備與工作階段在使用時檢查各自期限；觀察到期不取消既有串流。
 
 **理由**：第一版沒有排程，不可能承諾完全無流量時在第 30 天當刻實體刪除。紀錄超過期限即不可查閱；後續流量清理實體資料。傳輸若沒有可靠的結束／失敗觀察，維持 `unknown`，不以時間推測成功或失敗。
 

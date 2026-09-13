@@ -31,6 +31,8 @@ retryAfterSeconds 無適用值時為 null；可重試回應同時給 Retry-After
 
 ## 公開資料
 
+DOWNLOADS_ENABLED=false 時，以下公開資料及所有公開下載路由均回 503 temporarily_unavailable，不列出已設定發布的欄位、不建立／推進／兌換工作。唯一驗證例外為後述受管理員保護的 G0 路由；訪客不能以參數或標頭啟用例外。關閉總開關不取消已開始的附件串流。
+
 | 方法與路徑 | 輸入 | data 與結果 |
 |---|---|---|
 | GET /api/worlds | 無 | `{items: PublicWorld[], fetchedAt}`，無世界時 items=[] |
@@ -49,14 +51,20 @@ fetchedAt 是資料取得時間，不冒充存檔時間。歷史有分頁就全�
 
 | 方法與路徑 | 輸入／保護 | 結果 |
 |---|---|---|
-| POST /api/worlds/{worldId}/downloads | 同源 JSON；`{selection:{kind:"latest"}}` 或 `{selection:{kind:"backup",archiveId}}` | 202，`{jobId, statusSecret, state:"preparing", retryAfterSeconds, expiresAt}` |
-| POST /api/downloads/{jobId}/step | `X-Download-Capability` 為 statusSecret、同源 JSON 空物件 | 202 準備中；200 ready 時回一次 `{jobId,state:"ready",ticket,expiresAt}` |
-| GET /api/downloads/{jobId} | 同上 capability 標頭 | 200，`{jobId,state,stage,outcome,error,expiresAt}`，不回 ticket |
+| POST /api/worlds/{worldId}/downloads | 同源 JSON；`{selection:{kind:"latest"}}` 或 `{selection:{kind:"backup",archiveId}}` | 202，`{jobId,statusSecret,state:"preparing",retryAfterSeconds,prepareExpiresAt,statusExpiresAt}` |
+| POST /api/downloads/{jobId}/step | `X-Download-Capability` 為 statusSecret、同源 JSON 空物件 | 202 準備中，含 state／retryAfterSeconds／prepareExpiresAt；200 ready 時回一次 `{jobId,state:"ready",ticket,ticketExpiresAt,prepareExpiresAt,statusExpiresAt}` |
+| GET /api/downloads/{jobId} | 同上 capability 標頭 | 200，`{jobId,state,stage,outcome,error,prepareExpiresAt,statusExpiresAt}`，不回 ticket |
 | POST /api/downloads/redeem | 原生 form POST，同源 Origin；欄位 ticket | 200 附件串流；開始前錯誤為無附件標頭的繁體中文 HTML |
 
 建立請求先原子限流、主庫確認發布與連線、寫入工作及請求紀錄，不等待完整官方準備才回應。介面在按下時立即顯示準備中，以符合 2 秒回饋；狀態秘密只放頁面記憶體，不進 URL／localStorage／日誌。
 
 step 驗證 capability、世代、發布、到期與 next_poll_at。每次只推進一個外部階段，短租約避免同時打上游；過早呼叫給 429 與 Retry-After。同一次 transition 只核發一次票據；若回應遺失，使用者重建工作，不靠 GET 取回票據。工作到期 10 分鐘；上游世界準備最多 20 次，間隔取官方值，沒有時初始 5 秒。上游要求較長間隔時照辦，不能以密集重試繞過。
+
+prepareExpiresAt 對應資料模型 expires_at；statusExpiresAt 對應 status_expires_at，建立後固定 30 天；ticketExpiresAt 為票據的 60 秒期限，新兌換還須同時未超過 prepareExpiresAt。GET status 使用觀察期限，串流超過 10 分鐘仍可查詢；僅 preparing／ready／redeeming 在準備到期時呈現 expired，既有 failed／invalidated 的原因及 streaming／傳輸終態不能改寫為到期。每次仍核對 capability、發布／連線世代；失效時統一 404，不解讀成傳輸失敗。觀察期限不因查詢延長，結束頁不保證可恢復記憶體中的秘密。
+
+最多 20 次由 D1 的 prepare_attempts 與取得 step 租約的同一條件更新保證，依資料模型在真正的世界準備 HTTP 前加 1；授權分段、過早請求及未取得租約者不加。超時／程序消失不退次數，第 20 次仍未就緒回 503 preparation_limit_reached 並轉 failed，提示使用者手動重新嘗試；不能自動重建工作。GET status 可回該安全錯誤，失敗不核發附件票據。
+
+因準備端點 401／403 而強制續期，每工作最多一次，由 prepare_auth_retry_used 持久記錄；續期分段仍透過後續 step，續期後重送世界準備必須重新計數，不可藏在同一轉接器呼叫。已達 20 次且租約到期、回應不明時，下次 step 直接終止準備；晚到回應不能越過租約、期限或終態回寫。
 
 歷史選擇不可替換為 latest 或另一 backup。票據有效 60 秒，摘要存 D1，綁定完整工作／歸屬／世代／發布版本。消耗是單一條件 SQL；重放統一 404 not_available。下架再發布仍使舊票失效。
 
@@ -90,8 +98,8 @@ step 驗證 capability、世代、發布、到期與 next_poll_at。每次只推
 | 方法與路徑 | 輸入 | 結果 |
 |---|---|---|
 | GET /api/admin/connection | 無 | 連線 status、最近核對時間、安全原因，不回 token |
-| POST /api/admin/connection/attempts | 空物件，既有連線須先解除 | 201，`{attemptId,userCode,verificationUri,expiresAt,retryAfterSeconds}` |
-| POST /api/admin/connection/attempts/{attemptId}/step | 空物件 | 202 pending 或 200 authorized；遵守官方間隔 |
+| POST /api/admin/connection/attempts | 空物件，既有連線須先解除 | 201，`{attemptId,state:"pending",stage,userCode,verificationUri,expiresAt,retryAfterSeconds}`；尚未取得官方 challenge 時兩個 challenge 欄位皆為 null |
+| POST /api/admin/connection/attempts/{attemptId}/step | 空物件 | 202，與建立回應相同的 pending 投影，可首次回傳官方 challenge；200 `{attemptId,state:"authorized"}`；遵守官方間隔 |
 | DELETE /api/admin/connection/attempts/{attemptId} | 無 | 204，取消並清秘密；已終止可重複得到 204 |
 | DELETE /api/admin/connection | 無 | 204，清授權、下架與世代失效；斷開狀態可重複得到 204 |
 | GET /api/admin/worlds | 無 | 擁有 Realm／欄位的管理投影、來源時間及不可發布原因 |
@@ -101,7 +109,22 @@ step 驗證 capability、世代、發布、到期與 next_poll_at。每次只推
 
 首次發布及下架後重新發布都要求 acknowledgeAllArchives=true，介面先說明包含最新、全部現存及未來可用歷史存檔。發布前重新核對擁有權與欄位歸屬，空欄位或歸屬不明回 409。下架不需要再向上游成功查詢，直接以主庫版本生效。
 
-Microsoft 授權開始可能尚需多段 HTTP；起始頁面只有官方明確回傳的驗證網址與 user code，絕不顯示本站 Microsoft 密碼欄位。工作只能由建立者且有效的網站 session 推進。網站密碼重設後尚未完成授權不能復活。
+Microsoft 授權開始可能尚需多段 HTTP；stage=requesting_code 時顯示準備授權碼並繼續分次 step，不建立空的登入連結。取得官方 challenge 後 stage=waiting_for_user，才顯示已核對的驗證網址與 user code；後續交換 token 為 exchanging_tokens，challenge 欄位可清為 null。初始化期限及官方到期轉換見資料模型，不能自行延長官方有效期。絕不顯示本站 Microsoft 密碼欄位。工作只能由建立者且有效的網站 session 推進；session 刪除或密碼重設後尚未完成授權不能復活。
+
+## G0 管理員驗證入口
+
+G0 共用核心階段即提供最小發布／下架服務；後續 US3 延伸同一服務，不另寫測試專用 SQL 或略過發布判斷。所有欄位初始 published=false。管理員登入、真實擁有權及欄位核對完成後，在驗證頁逐一選取欄位，確認最新、全部現存及未來可用歷史的發布範圍，再以 expectedVersion 明確發布。
+
+| 方法與路徑 | operation 白名單 | 輸入與行為 |
+|---|---|---|
+| GET /api/admin/verification/{operation} | connection、worlds、archives、download-status | connection／worlds 沿用管理投影；archives 以 worldId 查已核對且已發布欄位；download-status 以 jobId 與 X-Download-Capability 查同一工作 |
+| POST /api/admin/verification/{operation} | connection-start、connection-step、connection-cancel、disconnect、publication、downloads、download-step、redeem | 只委派至同一授權、發布、下載與串流核心；不接受任意 URL／SQL／操作名稱 |
+
+POST 的 connection-start／disconnect 使用空物件；connection-step／connection-cancel 使用 `{attemptId}`。publication 使用 `{worldId,published,expectedVersion,acknowledgeAllArchives?}`，發布條件與正式發布 API 完全相同。downloads 使用 `{worldId,selection}`；download-step 使用 `{jobId}` 與 capability。這些操作的成功資料、錯誤及頻率規則沿用對應正式契約，connection-cancel／disconnect 回 204。未知 operation 回 404，白名單但方法錯誤回 405。
+
+每次驗證請求都要求有效自製管理員 session；所有 POST 要求精確 Origin 與 CSRF。redeem 使用原生表單 `{ticket,csrfToken}`，以 csrfToken 欄位驗證 session 的 CSRF 摘要，其餘 POST 使用 X-CSRF-Token。此表單不使用 JSON；附件、錯誤 HTML 與大小限制沿用正式兌換。DOWNLOADS_ENABLED=false 只在上述伺服器已驗證的管理員路由中可略過；建立、step、status、票據消耗及最後開始串流仍檢查已發布、擁有權／歸屬與版本，不允許下載未發布欄位。
+
+G0 時 Sites 外層保持受保護，公開路由保持停用；測試包含未登入、失效 session、CSRF、未發布欄位、舊票與錯誤方法的拒絕。每次驗證結束或中止前明確下架此次選取的欄位以推進版本；若中途失聯，下次先完成下架再繼續。正式啟用總開關前須核對無遺留驗收發布，重新由管理員選取正式範圍。
 
 ## 紀錄
 
@@ -122,6 +145,7 @@ data 為 `{items,nextCursor}`。每項含 id、occurredAt、category、worldDisp
 | 429 rate_limited | 限制次數，顯示可重試時間 | 同左 |
 | 503 connection_required | 暫時無法下載 | 需要重新連接，無原始 token |
 | 503 temporarily_unavailable／protocol_incompatible | 暫時無法下載；稍後再試 | 安全的服務／版本原因 |
+| 503 preparation_limit_reached | 本次準備已達上限；手動重新嘗試 | 同左，不自動新增工作 |
 | 502 invalid_archive | 無法取得有效世界檔 | 來源狀態或格式驗證失敗 |
 
 若既要保護未公開存在性又遇到外部錯誤，先通過主庫公開檢查才可顯示 archive_gone 等較具體內容。失效票據與不存在票據對外一致。

@@ -18,13 +18,13 @@ description: "Realms World 公開世界下載站的可追溯實作與驗收任�
 
 - 每項採 `- [ ] Tnnn [P] [USn] 描述與檔案路徑`；[P] 僅標記同一就緒批次可平行的工作，非每個任務必備。
 - [US1]～[US5] 對應規格的五個故事；準備、共用基礎與跨功能階段不標故事。
-- 任務中的程式／證據路徑皆相對儲存庫根目錄。列出的未存在程式與 validation 文件是未來產出，本次不建立空程式或假證據。
+- 任務中的程式／證據路徑皆相對儲存庫根目錄。列出的未存在程式與 validation 文件是未來產出；既有文件分析紀錄只證明文件檢查，不代表程式或真實驗收。
 - 每階段入口條件滿足後，未標 [P] 的任務依序執行；平行任務必須不同檔案且沒有彼此依賴，實際批次列於後文。
 - 測試來源為規格明列的 SC-001～SC-010、驗收情境及憲章 V；本清單不對無關的小改動新增測試。故事內先建立對應失敗案例，再實作，結束時全部相關案例須通過。環境無法執行不算通過。
 - G0 允許最小安全登入、授權、資料與串流核心，以驗證平台可行性；US2 等後續故事承接共用實作，不能重建另一套授權／帳號／下載核心。
 - 任一真實驗收需要管理員親自授權或遊戲內確認時，保留待完成並明確記錄；不得以人工 fixture、文件研究或 HTTP 200 代替。
 - 每次改動影響真實測試程式／設定時，先保存 Git 提交、更新同一 Sites 版本再實測，證據必須對應實際執行版本。
-- 正式功能開放前必須完成全部必要故事與驗收；US1 是可獨立測試的第一個垂直切片，並非可以刪除歷史、管理或紀錄要求的正式最小版本。
+- 正式功能開放前必須完成全部必要故事與部署前驗收，正式網域整合依 T091／T092 執行後才完成交付；US1 是可獨立測試的第一個垂直切片，並非可以刪除歷史、管理或紀錄要求的正式最小版本。
 
 ## 第 1 階段：專案準備
 
@@ -32,7 +32,7 @@ description: "Realms World 公開世界下載站的可追溯實作與驗收任�
 
 **入口／檢查點**：完成本階段後才進入共用基礎。此處所有任務均待實作，不因目前已具備 Git 或文件而預先勾選。
 
-- [ ] T001 先完成 spec／plan／tasks 一致性審查，將可執行的阻斷問題與修正記錄於 `specs/001-realms-world-downloads/validation/analysis.md`；確認憲章 v2.0.0、分支 `001-realms-world-downloads` 與既有草稿 PR #1，未解決的必要問題不得帶入實作。
+- [ ] T001 實作開始時複查最新 spec／plan／tasks 與 `specs/001-realms-world-downloads/checklists/analysis.md`，將當時的阻斷問題及修正記錄於 `specs/001-realms-world-downloads/validation/analysis.md`；確認憲章 v2.0.0、分支 `001-realms-world-downloads` 與既有草稿 PR #1，未解決的必要問題不得帶入實作，不能以較早版本的文件審查代替本次入口檢查。
 - [ ] T002 在 `package.json`、`package-lock.json`、`vite.config.ts` 與 `.gitignore` 整合 Sites starter；先取得受支援的 npm、使用 Node 22.13.0 以上與鎖定依賴、啟用 nodejs_compat，先忽略秘密與本機資料；暫存 starter 只合併必要新檔，不覆蓋 `.agents/`、`.specify/` 或 Git。
 - [ ] T003 在 `.openai/hosting.json`、`lib/security/env.ts` 與 `.env.example` 宣告單一 Site、D1 DB 與維護契約中的設定鍵；DOWNLOADS_ENABLED 預設 false，缺少必要來源版本／精確主機時拒絕該能力，秘密只列鍵名，GitHub 保持 origin。
 - [ ] T004 [P] 在 `vitest.config.ts`、`playwright.config.ts`、`package.json` 設定 Vitest 4.1 以上與 @cloudflare/vitest-plugin、Playwright、check／test:unit／test:integration／test:e2e／test:stream／build 入口；預設測試不呼叫真實 Microsoft 或 Realms。
@@ -44,31 +44,31 @@ description: "Realms World 公開世界下載站的可追溯實作與驗收任�
 
 **入口／檢查點**：T006～T029 可建立最小驗證程式及必要共用核心，不建立完整產品頁面。T030 未通過時，T031 之後全部停止；等待真實授權或遊戲匯入不是完成。
 
-- [ ] T006 在 `db/schema.ts` 定義 admin_accounts、admin_sessions、maintenance_operations 全部欄位：id「固定 1，主鍵與 CHECK，最多一列」；username「2～64 字元，小寫英文字母、數字、底線、點、連字號；唯一」；password_hash「含版本、參數、salt 與衍生結果的 scrypt 封裝」；credential_version「正整數；改密碼或維護重設遞增」；時間「UTC 毫秒」；token_digest／operation_digest 為主鍵、admin_id=1、action 限 bootstrap／reset，防重放摘要不依 30 天期限刪除。
+- [ ] T006 在 `db/schema.ts` 定義 admin_accounts、admin_sessions、maintenance_operations 全部欄位：id「固定 1，主鍵與 CHECK，最多一列」；username「2～64 字元，小寫英文字母、數字、底線、點、連字號；唯一」；password_hash「含版本、參數、salt 與衍生結果的 scrypt 封裝」；credential_version「正整數；改密碼或維護重設遞增」；時間「UTC 毫秒」；token_digest／operation_digest 為主鍵、admin_id=1、action 限 bootstrap／reset，guard_passed 為 NOT NULL 且 CHECK=1；防重放摘要不依 30 天期限刪除。
 - [ ] T007 在 `db/schema.ts` 加入 realm_connections、auth_attempts、realms、world_slots 全部欄位與關聯：connection id=1，generation「非遞減整數；開始新連接、取消及解除時推進」，status「disconnected、authorizing、connected、reauth_required」，credential_box「AES-GCM 封裝，可為 null」，owner_xuid「已核對擁有者穩定 ID；解除清空」，token_version「成功保存新授權時遞增」；auth_attempts「狀態為 pending → authorized／cancelled／denied／expired／failed」。
 - [ ] T008 在 `db/schema.ts` 補齊欄位與存檔約束、在 `lib/realms/types.ts` 定義存檔投影：Realms「目前世代的 source_realm_id 唯一」；public_id「內部主鍵與隨機公開 ID；公開 ID 不包含帳號或 Realm ID」，realm_id／source_slot_id「組合唯一，關聯 Realm 及欄位」，connection_generation「對應目前連線」，source_identity「可靠的官方內容辨識投影；無法確認為 null」，association_status「verified、empty、unverifiable、unavailable」，display_name／description「純文字 1～100／0～2000 碼點，不改官方資料」，published「預設 false」，publication_version「發布、下架或歸屬失效時遞增；顯示文字修改不影響」，fetched_at／updated_at「來源取得及設定更新時間」；存檔 kind 限 latest／backup，「未知時間／大小／版本為 null；API size_bytes 使用十進位字串」。
-- [ ] T009 在 `db/schema.ts` 加入 download_jobs、download_tickets、download_attempts、audit_events、rate_limit_windows、maintenance_state 全部欄位與索引，ticket_digest 為主鍵、job_id 唯一；jobs「狀態：preparing → ready → redeeming → streaming → transfer_ended／transfer_failed。準備可轉 failed／expired／invalidated。」；attempts「outcome=unknown 為初始值，包含進行中及缺少證據者，另以階段欄位說明。」；rate_limit_windows「以 scope、key_digest、window_start 為組合主鍵」；加入所有時間／世界／狀態／世代／到期索引與 CHECK／外鍵，產生 `drizzle/0000_realms_world.sql` 及 db:migrate:local，驗證新資料庫可重建且不修改已套用遷移。
-- [ ] T010 [P] 在 `tests/integration/security-primitives.test.ts` 先寫唯一管理員、條件登入、session 到期／版本、CSRF、重放 batch 回滾、D1 主庫權限、加密驗證標籤與限流競爭的失敗測試，禁止用記憶體計數假裝跨請求一致性。（FR-008、FR-009、FR-019、FR-020、FR-021）
-- [ ] T011 [P] 在 `tests/unit/realms-protocol.test.ts` 先寫 expires_in 秒／毫秒、P-256 簽章固定向量、裝置碼降速、Realm 擁有權、兩欄位歸屬、完整歷史分頁與非作用中欄位的失敗測試。（FR-011、FR-012、FR-014、FR-019）
+- [ ] T009 在 `db/schema.ts` 加入 download_jobs、download_tickets、download_attempts、audit_events、rate_limit_windows、maintenance_state 全部欄位與索引，ticket_digest 為主鍵，票據 job_id 唯一且 ON DELETE CASCADE；觀察 job_id 為 NOT NULL、UNIQUE 且 ON DELETE RESTRICT；prepare_attempts 為 0～20 的 NOT NULL 整數、預設 0，prepare_auth_retry_used 為 NOT NULL 布林、預設 false，status_expires_at 為建立後固定 30 天；jobs「狀態：preparing → ready → redeeming → streaming → transfer_ended／transfer_failed。準備可轉 failed／expired／invalidated。」；attempts「outcome=unknown 為初始值，包含進行中及缺少證據者，另以階段欄位說明。」；rate_limit_windows「以 scope、key_digest、window_start 為組合主鍵」；加入所有時間／世界／狀態／世代／兩種工作期限索引與 CHECK／外鍵，產生 `drizzle/0000_realms_world.sql` 及 db:migrate:local，驗證新資料庫可重建且不修改已套用遷移。
+- [ ] T010 [P] 在 `tests/integration/security-primitives.test.ts` 先寫唯一管理員、條件登入、session 到期／版本、CSRF、重放與版本斷言 batch 回滾、D1 主庫權限、加密驗證標籤、限流及 prepare_attempts 冷啟動／並行競爭的失敗測試；重設衝突不改帳號／sessions／操作摘要，世界準備不超過 20 次且授權分段不計數，禁止用記憶體計數假裝跨請求一致性。（FR-008、FR-009、FR-019、FR-020、FR-021）
+- [ ] T011 [P] 在 `tests/unit/realms-protocol.test.ts` 先寫 expires_in 秒／毫秒、P-256 簽章固定向量、裝置碼降速／分段取得 challenge、Realm 擁有權、兩欄位歸屬、完整歷史分頁與非作用中欄位的失敗測試；世界準備一次轉接器呼叫只發一個 HTTP，401／403 不隱藏重試。（FR-011、FR-012、FR-014、FR-019）
 - [ ] T012 [P] 在 `tests/integration/stream-primitives.test.ts` 先寫未知大小、背壓、前綴 bytes 不遺失、來源取消、HTML／JSON／206 拒絕、精確主機與每跳 redirect 授權隔離的失敗測試。（FR-007、FR-020、FR-023、FR-024）
 - [ ] T013 在 `lib/db/client.ts`、`lib/db/conditional-writes.ts` 建立預備語句、D1 batch、RETURNING／changes 與結果不明處理；UTC epoch 毫秒、外部 ID 字串、權限讀主庫或 first-primary，禁止跨 await 的先讀後寫冒充交易；提供世代、發布版本與一次性票據的原子條件原語。
 - [ ] T014 在 `lib/security/request-policy.ts`、`lib/security/rate-limit.ts`、`lib/security/errors.ts` 建立精確 Origin、JSON 16 KiB／表單 4 KiB、CSRF、no-store／nosniff／no-referrer、公開錯誤遮蔽及原子限流；登入每來源 5／全站 20 次每 15 分鐘，建立下載每來源 6／全站 30 次每分鐘，狀態每工作 30 次每分鐘，其他公開 API 每來源 120 次每分鐘；HMAC 日更來源識別，不記原始 IP。（FR-019～FR-023）
 - [ ] T015 在 `lib/auth/password.ts` 與 `lib/security/crypto-box.ts` 實作「密碼 15～128 個 Unicode 碼點、UTF-8 最多 1024 bytes，不截斷、trim 或正規化。」及「scrypt(N=16384,r=8,p=5,maxmem=33554432,keylen=32)」、「每次至少 16 bytes 隨機 salt、等時比較」；AES-256-GCM 封裝「含 format_version、key_id、每次新的 12 bytes nonce 及驗證標籤」，AAD 綁定用途／連線 ID／generation／格式版本，金鑰與 D1 分開，解密失敗拒絕下載。
 - [ ] T016 在 `scripts/admin-maintain.mjs`、`lib/auth/session.ts`、`lib/auth/maintenance.ts`、`app/api/admin/login/route.ts`、`app/api/admin/session/route.ts`、`app/api/maintenance/admin/route.ts`、`app/api/maintenance/admin/version/route.ts` 建立 G0 所需最小無密碼回顯初始化 CLI、登入／初始化與版本查詢；「32 bytes 隨機不透明 session 的 SHA-256 摘要入庫，原值僅放安全 Cookie。」、「閒置 30 分鐘或建立 12 小時後失效」；CSRF 只存摘要，登入條件寫入 credential_version，維護秘密一次性 batch，缺失／錯誤秘密一致 404，不提供匿名註冊。
-- [ ] T017 在 `lib/realms/microsoft-auth.ts`、`lib/realms/xbox-auth.ts` 實作 beginDeviceLogin／advanceDeviceLoginOnce；沿用 research.md 固定 live／Nintendo title、Microsoft 官方裝置碼與 Realms 專用 relying party，分次保存加密 device code／cookie／P-256 證明，依 next_poll_at 推進一次外部階段，取消／拒絕／到期清秘密。
+- [ ] T017 在 `lib/realms/microsoft-auth.ts`、`lib/realms/xbox-auth.ts` 實作 beginDeviceLogin／advanceDeviceLoginOnce；沿用 research.md 固定 live／Nintendo title、Microsoft 官方裝置碼與 Realms 專用 relying party，分次保存加密 device code／cookie／P-256 證明。DeviceStartResult 支援尚未取得 challenge 的 pending，依 requesting_code／waiting_for_user／exchanging_tokens 投影安全狀態；初始化 10 分鐘，取得 challenge 後改用官方絕對期限。依 next_poll_at 推進一次外部階段並核對租約回寫，取消／拒絕／到期／session 刪除後清秘密，不復活授權。
 - [ ] T018 在 `lib/realms/authorization.ts` 與 `lib/db/connections.ts` 實作 getValidRealmsAuthorization、token 保存與解除原語；「刷新租約初始 30 秒、每個上游 HTTP 最長 10 秒」，回寫檢查 status／generation／token_version／owner／期限，超時可接手；解除 batch 清授權與待完成描述、增加世代、下架並失效票據，晚到結果不得復活連線，429／5xx 不冒充撤權。
 - [ ] T019 在 `lib/realms/client.ts`、`lib/realms/ownership.ts`、`lib/realms/archives.ts` 實作 listOwnedRealms／listWorldSlots／listBackupsForVerifiedSlot／prepareWorldDownload；原始碼只作協定參考，無證據一律 slot_unverifiable，禁止以 slotId 包裝 Realm 級備份或切換作用中欄位；預留 T026 實測後完成的可信映射，不先填猜測版本／主機。
 - [ ] T020 在 `lib/security/download-source.ts` 與 `lib/downloads/stream.ts` 實作 openValidatedDownload：來源僅後端 Realms 回應、HTTPS 精確主機／443、manual redirect 最多 3 跳且逐跳重驗，Bearer 不任意跨主機轉送；最多 4 KiB 前綴驗證後完整交付，持續背壓／取消，禁止整檔 Buffer／Blob、tee 未消費分支、世界儲存與下載心跳租約。
-- [ ] T021 在 `lib/db/downloads.ts` 實作工作／票據的原子核心；「建立時產生 32 bytes 狀態秘密，D1 只存摘要，瀏覽頁只在記憶體保存。」；「工作有效 10 分鐘；上游世界準備最多 20 次嘗試」；票據「32 bytes 原票有效 60 秒，只在轉 ready 的 step 回應一次」；原子消耗與最終 redeeming → streaming 兩道權限條件，上游失敗不復活票據，準備期限不截斷已開始串流。
+- [ ] T021 在 `lib/db/downloads.ts` 實作工作／票據的原子核心；「建立時產生 32 bytes 狀態秘密，D1 只存摘要，瀏覽頁只在記憶體保存。」；「工作有效 10 分鐘；上游世界準備最多 20 次嘗試」；世界準備前同一條件更新取得租約並增加 prepare_attempts，prepare_auth_retry_used 限一次強制續期且重送要計數，授權分段不計數、失敗不退次數，終態與租約阻止晚到寫入；票據「32 bytes 原票有效 60 秒，只在轉 ready 的 step 回應一次」；原子消耗與最終 redeeming → streaming 均核對準備期限及發布／世代，上游失敗不復活票據；GET 觀察期限固定 30 天，準備期限不截斷已開始串流。
 - [ ] T022 在 `lib/audit/writer.ts` 建立請求、操作與傳輸安全紀錄原語，供 G0 及各故事共用；開始前請求須落庫、未知為預設，只有實際 EOF／錯誤證據可改結果；「禁止原始錯誤、秘密、上游 URL、成員名單及原始 IP。」；所有讀取先限最近 30 天，不能等到 US5 才保護或記錄資料。
-- [ ] T023 在 `app/admin/verification/page.tsx` 與 `app/api/admin/verification/[operation]/route.ts` 建立最小管理員驗證入口，重用 T013～T022 的正式核心與同源／CSRF 保護，逐段操作授權、欄位、一次性票據及原生串流；DOWNLOADS_ENABLED=false 不阻止此受保護入口，但不能開放匿名或任意 URL／SQL 探測。
+- [ ] T023 在 `lib/realms/publication-service.ts` 建立共用最小發布／下架核心，並在 `app/admin/verification/page.tsx`、`app/api/admin/verification/[operation]/route.ts` 及 `tests/integration/verification-api.test.ts` 完成 HTTP 契約的固定 operation 白名單與拒絕測試；管理員確認全部歷史並明確發布驗收欄位後，重用 T013～T022 的授權、票據與串流核心。每次驗 session、POST 再驗 Origin／CSRF，原生 redeem 表單帶 csrfToken；只略過 DOWNLOADS_ENABLED=false，仍查發布／擁有權／版本，公開路由保持停用；未登入、失效 session、未發布、舊票、未知操作與方法錯誤均拒絕，不接受 URL／SQL 探測。結束／中止前下架驗收欄位，T060 延伸同一核心。
 - [ ] T024 執行基礎測試後將最小程式保存為 Git 提交，在同一 Sites 的受保護驗證部署實測 D1 binding／batch／條件寫入、部署秘密與 scrypt CPU／記憶體／外部延遲；於 `specs/001-realms-world-downloads/validation/g0-platform.md` 記錄提交／Site 版本／配額及受保護 D1 維護能力，不能用本機成功替代 hosted 結果或降低雜湊成本。
 - [ ] T025 由管理員親自使用 Microsoft 官方頁面完成裝置碼，驗證跨獨立請求／冷啟動／新網站登入重用與一次真實 refresh token 續期及 XSTS 重建；在 `specs/001-realms-world-downloads/validation/g0-auth.md` 記錄通過／失敗／未執行、取消／拒絕／降速／到期結果，不寫 token。（SC-003）
 - [ ] T026 以真實擁有者、至少兩個可區辨欄位及非作用中欄位核對最新／歷史歸屬與完整列表，排除受邀 Realm；將可靠映射落實於 `lib/realms/ownership.ts`、`lib/realms/archives.ts` 並更新相關測試，於 `specs/001-realms-world-downloads/validation/g0-association.md` 記錄 Client-Version、精確來源主機／redirect 與安全欄位證據；無法證明就維持拒絕並阻擋 G0。
-- [ ] T027 透過同一 Sites 驗證入口下載一份最新、一份不同歷史及實際最大世界（可重用符合條件的同一次下載），由管理員至少匯入一份至相容基岩版並核對內容；於 `specs/001-realms-world-downloads/validation/g0-downloads.md` 記錄版本、大小、耗時與使用者確認，世界檔只留驗收裝置。（SC-002、SC-006）
+- [ ] T027 使用 T023 的發布核心，管理員明確選取並發布驗收欄位後，透過同一 Sites 受保護入口下載一份最新、一份不同歷史及實際最大世界（可重用符合條件的同一次下載）；Sites 外層保持受保護、公開總開關關閉。由管理員至少匯入一份至相容基岩版並核對內容；於 `specs/001-realms-world-downloads/validation/g0-downloads.md` 記錄版本、大小、耗時與確認，世界檔只留驗收裝置；整個 G0 結束／中止前下架驗收欄位。（SC-002、SC-006）
 - [ ] T028 在 `scripts/verify-stream.mjs` 與 `tests/integration/stream-load.test.ts` 建立即時串流計數／雜湊驗證，再於 Sites 執行 3 個各至少 1 GiB 串流及 20 次並行頁面操作、慢速／未知大小／斷線測試；將記憶體、CPU、前置層是否截斷與無世界副本證據寫入 `specs/001-realms-world-downloads/validation/g0-streams.md`。（SC-006）
-- [ ] T029 在 `tests/integration/g0-races.test.ts` 驗證同票 20 次兌換最多一次、刷新與解除、取消後晚到授權、重設與舊登入、下架再發布舊票、D1 結果不明及結束紀錄寫入失敗；在 Sites 以人工安全資料執行相同原子核心，結果寫入 `specs/001-realms-world-downloads/validation/g0-races.md`，不以本機記憶體鎖代替 D1。（SC-004、SC-007、SC-009）
-- [ ] T030 彙整 T024～T029 至 `specs/001-realms-world-downloads/validation/g0.md`，逐一核對計畫 G0 門檻與憲章 V；只有全部必要項目具實際通過證據才勾選本任務。能力失敗或缺授權／歷史／匯入確認時保留未完成，記錄阻斷原因，不開始完整故事、不另加主機或取消核心需求。
+- [ ] T029 在 `tests/integration/g0-races.test.ts` 驗證同票 20 次兌換最多一次、刷新與解除、取消後晚到授權、重設與舊登入、過時 reset 的全部寫入回滾且秘密未消耗、下架再發布舊票、prepare_attempts 冷啟動／並行不超過上限、D1 結果不明及結束紀錄寫入失敗；在 Sites 以人工安全資料執行相同原子核心，結果寫入 `specs/001-realms-world-downloads/validation/g0-races.md`，不以本機記憶體鎖代替 D1。（SC-004、SC-007、SC-009）
+- [ ] T030 彙整 T024～T029 至 `specs/001-realms-world-downloads/validation/g0.md`，逐一核對計畫 G0 門檻與憲章 V，確認驗收欄位已下架、舊票失效且公開總開關仍關閉；只有全部必要項目具實際通過證據才勾選本任務。能力失敗或缺授權／歷史／匯入確認時保留未完成，記錄阻斷原因並完成下架，不開始完整故事、不另加主機或取消核心需求。
 
 ## 第 3 階段：使用者故事 1－訪客下載公開世界的最新存檔（P1）
 
@@ -78,17 +78,17 @@ description: "Realms World 公開世界下載站的可追溯實作與驗收任�
 
 ### 測試
 
-- [ ] T031 [P] [US1] 在 `tests/integration/public-download-api.test.ts` 先寫公開列表／詳情／建立工作／step／status／兌換契約測試，涵蓋匿名、只見已發布世界、未知欄位、準備回饋、票據重放、capability 不可列舉與一致 404。（FR-001～FR-005、FR-018～FR-023）
+- [ ] T031 [P] [US1] 在 `tests/integration/public-download-api.test.ts` 先寫公開列表／詳情／建立工作／step／status／兌換契約測試，涵蓋匿名、只見已發布世界、未知欄位、準備回饋、票據重放、capability 不可列舉與一致 404；加入三種期限欄位、串流超過 10 分鐘仍可查詢、未開始到期不可兌換、既有失敗原因不因到期改寫、準備第 20／21 次與 401 續期後重送計數／租約到期晚回應、30 天觀察到期及下架後查詢拒絕不取消既有附件。（FR-001～FR-005、FR-018～FR-023）
 - [ ] T032 [P] [US1] 在 `tests/integration/download-failures.test.ts` 先寫上游 429／5xx／準備中／無效附件、未知長度／中文檔名／來源取消、最終發布檢查與下架競爭的測試，確定失敗不成 .mcworld、不換世界或追加 JSON。（FR-007、FR-021～FR-024）
 
 ### 實作與驗收
 
 - [ ] T033 [US1] 在 `lib/downloads/types.ts` 與 `lib/realms/public-projection.ts` 定義 PublicWorld／Archive／Selection 投影及輸入驗證，kind 限 latest／backup、PublicWorld availability 限 available／temporarily_unavailable；承接「未知時間／大小／版本為 null；API size_bytes 使用十進位字串。」及 latest 選擇器，fetchedAt 不冒充存檔時間，不輸出帳號、Realm ID 或成員。
 - [ ] T034 [US1] 在 `lib/realms/public-catalog.ts` 實作主庫發布／連線篩選、最新來源重新核對、空狀態與服務不可用區分；來源更新反映於新查詢，仍有發布設定但授權失效不能假裝空列表，未知／未公開 ID 統一拒絕。（FR-002、FR-003、FR-004、FR-019）
-- [ ] T035 [US1] 在 `lib/downloads/jobs.ts` 完成 preparing／ready／redeeming／streaming／終態協調，重用 T021 期限與票據原語；每個 step 一個外部階段、短租約、next_poll_at、無間隔時 5 秒、最多 20 次世界準備，不自動重建工作；狀態秘密只供目前頁面、票據只回一次，失效／到期清加密描述。
+- [ ] T035 [US1] 在 `lib/downloads/jobs.ts` 完成 preparing／ready／redeeming／streaming／終態協調，重用 T021 的 prepare_attempts、期限與票據原語；每個 step 一個外部階段、短租約、next_poll_at、無間隔時 5 秒，世界準備取得租約時原子加 1、最多 20 次，授權分段不計數、失敗／接手不歸零。prepare_auth_retry_used 限一次強制續期，續期後重送須再計數；第 20 次未就緒或結果不明且租約到期則 failed／preparation_limit_reached，不自動重建工作。準備到期僅改 preparing／ready／redeeming，不覆寫已存在的失敗原因；status 依 30 天期限，晚到回應不能越過租約／終態；票據只回一次，失效／到期清加密描述。
 - [ ] T036 [US1] 在 `lib/downloads/redeem.ts` 與 `lib/downloads/filename.ts` 完成原子消耗、取得有效上游後再次條件更新才能開始串流；安全中文／ASCII fallback 檔名含 latest 或歷史辨識，不捏造日期、拒絕 CR／LF／路徑字元，未知大小不補 Content-Length；連接 T020 串流及 T022 請求／結束／失敗觀察。（FR-005、FR-018、FR-023、FR-024、FR-026）
 - [ ] T037 [US1] 在 `app/api/worlds/route.ts` 與 `app/api/worlds/[worldId]/route.ts` 提供 GET 列表／詳情，套用公開限流、統一錯誤與 no-store；DOWNLOADS_ENABLED 為公開下載總開關，不能只由前端按鈕限制。（FR-001～FR-004、FR-019、FR-020）
-- [ ] T038 [US1] 在 `app/api/worlds/[worldId]/downloads/route.ts`、`app/api/downloads/[jobId]/step/route.ts`、`app/api/downloads/[jobId]/route.ts` 提供 POST 建立／step 與 GET status；建立先寫請求再回 202，step／status 驗證 X-Download-Capability、到期／世代／發布，Retry-After 誠實回傳，GET 不取回原票。（FR-021、FR-022）
+- [ ] T038 [US1] 在 `app/api/worlds/[worldId]/downloads/route.ts`、`app/api/downloads/[jobId]/step/route.ts`、`app/api/downloads/[jobId]/route.ts` 提供 POST 建立／step 與 GET status；工作與請求同一 batch、相同建立時間，成功後回 202。step 查 10 分鐘準備期限，status 查固定 30 天觀察期限，兩者皆驗 X-Download-Capability、世代／發布；API 分別回 prepareExpiresAt、ticketExpiresAt（ready 時）與 statusExpiresAt，串流不因準備到期改 expired，Retry-After 誠實回傳，GET 不取回原票。（FR-021、FR-022）
 - [ ] T039 [US1] 在 `app/api/downloads/redeem/route.ts` 提供同源原生表單 POST 附件，票據只在 body；200 application/octet-stream、UTF-8 檔名、no-store，開始前錯誤為無附件標頭的繁體中文 HTML，開始後串流失敗不追加錯誤內容，Range 不提供斷點續傳。
 - [ ] T040 [US1] 在 `components/DownloadButton.tsx` 與 `components/DownloadStatus.tsx` 實作立即準備回饋、受節流的 step／status、僅記憶體 capability、原生 form POST 至獨立命名視窗／分頁；處理彈出受限、失效與手動重試，不用 fetch().blob()，頁面關閉不應取消已交給瀏覽器的原生下載。
 - [ ] T041 [US1] 在 `app/layout.tsx`、`app/page.tsx`、`app/worlds/[worldId]/page.tsx` 與 `components/WorldCard.tsx` 完成繁體中文列表／世界頁、純文字名稱／說明、來源取得時間、未知資訊、空／載入／不可用與最新下載入口；頁面加入官方最新不等於未儲存進度的說明。（FR-001～FR-005、FR-027）
@@ -105,13 +105,13 @@ description: "Realms World 公開世界下載站的可追溯實作與驗收任�
 
 ### 測試
 
-- [ ] T044 [P] [US2] 在 `tests/integration/admin-account.test.ts` 先寫 login／session／logout／password、bootstrap／version／reset 契約與競爭測試；涵蓋同源／CSRF、5／20 次登入限流、同等失敗訊息、15～128 碼點密碼、12 小時／30 分鐘期限、一次性維護秘密與舊登入／重設競爭。（FR-008～FR-010、FR-020、FR-021）
-- [ ] T045 [P] [US2] 在 `tests/integration/admin-connection.test.ts` 先寫連接／step／取消／解除／世界核對契約測試，涵蓋失效 session 啟動的未完成授權、refresh 互斥、晚到回寫、解密失敗、受邀 Realm 及重新連接不發布。（FR-011～FR-015）
+- [ ] T044 [P] [US2] 在 `tests/integration/admin-account.test.ts` 先寫 login／session／logout／password、bootstrap／version／reset 契約與競爭測試；涵蓋同源／CSRF、5／20 次登入限流、同等失敗訊息、15～128 碼點密碼、12 小時／30 分鐘期限、一次性維護秘密與舊登入／重設競爭；過時一般改密碼不得刪較新 session，reset 衝突不得產生任何帳號／session／操作摘要寫入。（FR-008～FR-010、FR-020、FR-021）
+- [ ] T045 [P] [US2] 在 `tests/integration/admin-connection.test.ts` 先寫連接／step／取消／解除／世界核對契約測試，涵蓋 requesting_code 的 null challenge、後續 pending 首次取得 challenge 與官方期限、session 刪除及晚到授權、refresh 互斥、晚到回寫、解密失敗、受邀 Realm 及重新連接不發布。（FR-011～FR-015）
 
 ### 實作與驗收
 
-- [ ] T046 [US2] 承接 T016 的核心，在 `app/api/admin/logout/route.ts`、`app/api/admin/password/route.ts` 及 `lib/auth/account.ts` 完成登出／驗舊密碼後改密碼／全部工作階段失效，回清 Cookie；登入與 session 路由通過完整版本／期限／CSRF／一般失敗訊息契約，不另建第二套帳號系統。
-- [ ] T047 [US2] 在 `scripts/admin-maintain.mjs` 與 `lib/auth/maintenance.ts` 補齊 bootstrap／reset 互動流程及 npm admin:maintain 入口；無回顯密碼、不從指令列接秘密、固定 scrypt 封裝、expectedCredentialVersion 競爭、唯一 operation_digest 與帳號變更同一 batch，成功後移除 Sites 維護秘密並部署生效，失敗不盲目重設。
+- [ ] T046 [US2] 承接 T016 的核心，在 `app/api/admin/logout/route.ts`、`app/api/admin/password/route.ts` 及 `lib/auth/account.ts` 完成登出／驗舊密碼後改密碼／全部原有工作階段失效，成功回清 Cookie；改密碼 batch 條件更新後只刪預期版本及更舊 sessions，更新 0 筆回 409，不刪較新 sessions。登入與 session 路由通過完整版本／期限／CSRF／一般失敗訊息契約，不另建第二套帳號系統。
+- [ ] T047 [US2] 在 `scripts/admin-maintain.mjs` 與 `lib/auth/maintenance.ts` 補齊 bootstrap／reset 互動流程及 npm admin:maintain 入口；無回顯密碼、不從指令列接秘密、固定 scrypt 封裝；同一 batch 先 INSERT VALUES 以 guard_passed CHECK 斷言 expectedCredentialVersion，再改帳號及刪 sessions。版本衝突 409 全部回滾且不消耗秘密，操作者讀新版本並確認後才重送；成功後移除 Sites 維護秘密並部署生效，結果不明不盲目重設。
 - [ ] T048 [US2] 在 `app/api/admin/connection/attempts/route.ts`、`app/api/admin/connection/attempts/[attemptId]/step/route.ts`、`app/api/admin/connection/attempts/[attemptId]/route.ts` 完成建立、分次查詢及取消授權，重用 G0 轉接器；user code／官方 verificationUri 只給建立者的有效 session，取消／拒絕／到期清密文，既有連線須先解除。
 - [ ] T049 [US2] 在 `app/api/admin/connection/route.ts` 與 `lib/realms/connection-service.ts` 提供安全連線狀態及完整解除 batch，清保存授權／待完成工作／下載描述、下架欄位、失效票據、寫安全紀錄；重複解除可 204、網站登出不解除 Microsoft，重新連接不自動發布。（FR-012、FR-013、FR-015）
 - [ ] T050 [US2] 在 `app/api/admin/worlds/route.ts`、`app/api/admin/worlds/refresh/route.ts` 與 `lib/realms/sync-owned-worlds.ts` 提供已核對擁有者 Realm／欄位清單及手動刷新，標示空欄位／不可用原因及 fetchedAt，受邀項目不可發布；來源失敗明確回錯誤，不假裝無世界。
@@ -138,7 +138,7 @@ description: "Realms World 公開世界下載站的可追溯實作與驗收任�
 
 - [ ] T058 [US3] 在 `lib/db/world-slots.ts` 完成穩定隨機 public_id、目前世代／欄位組合唯一、同步時只保留網站文字、重新連接全部未發布；欄位內容替換或歸屬失效時增加 publication_version 並下架，公開查詢不得等快取過期才拒絕。
 - [ ] T059 [US3] 在 `lib/realms/display-settings.ts` 實作顯示文字驗證與更新，沿用「純文字 1～100／0～2000 碼點，不改官方資料」；不影響 publication_version、不呼叫 Realm 寫入端點，純文字呈現避免 HTML 注入。
-- [ ] T060 [US3] 在 `lib/realms/publication.ts` 實作明確發布／下架：發布前核對 connected／擁有權／verified 且非空，要求歷史公開確認及 expectedVersion；下架直接主庫條件提交、增加版本並失效未開始工作／票據，與授權解除及傳輸開始競爭時保持一致。
+- [ ] T060 [US3] 延伸 T023 的 `lib/realms/publication-service.ts`，整合 T058 儲存庫與完整管理流程，不另建發布核心：發布前核對 connected／擁有權／verified 且非空，要求歷史公開確認及 expectedVersion；下架直接主庫條件提交、增加版本並失效未開始工作／票據，與授權解除及傳輸開始競爭時保持一致。
 - [ ] T061 [US3] 在 `app/api/admin/worlds/[worldId]/route.ts` 與 `app/api/admin/worlds/[worldId]/publication/route.ts` 提供 PATCH 顯示設定與 PUT 發布，均驗有效管理員／CSRF，衝突 409，操作紀錄不含私人上游內容。
 - [ ] T062 [US3] 在 `app/admin/worlds/page.tsx` 與 `components/WorldPublicationForm.tsx` 完成 Realm／欄位、空欄位／不可發布原因、純文字設定及發布／下架；發布前說明最新、全部現存及未來可用歷史皆公開，下架後刷新狀態及版本。（FR-016、FR-017、FR-018、FR-027）
 - [ ] T063 [US3] 執行兩欄位隔離、跨 Realm、下架／重新發布舊票、欄位替換與解除的驗收，將 API／瀏覽器結果與未公開外洩數寫入 `specs/001-realms-world-downloads/validation/us3.md`，外洩必須為 0；與 US1／US2 的真實整合維持發布範圍一致。（SC-004）
@@ -175,13 +175,13 @@ description: "Realms World 公開世界下載站的可追溯實作與驗收任�
 
 ### 測試
 
-- [ ] T072 [P] [US5] 在 `tests/integration/audit-retention.test.ts` 先寫紀錄 API 權限／參數、30 天查詢／游標邊界、每批 500 筆清理及保留防重放摘要測試，清理失敗不恢復過期資料可讀。（FR-025、FR-027）
+- [ ] T072 [P] [US5] 在 `tests/integration/audit-retention.test.ts` 先寫紀錄 API 權限／參數、30 天查詢／游標邊界、每批總計 500 筆及外鍵清理順序測試；涵蓋準備到期僅清秘密而紀錄仍可讀、父列 RESTRICT、30 天內串流觀察保留、超過 30 天可清理且晚到終態不重建紀錄、防重放摘要保留；清理失敗不恢復過期資料可讀。（FR-025、FR-027）
 - [ ] T073 [P] [US5] 在 `tests/integration/download-observation.test.ts` 先寫正常 EOF／Content-Length 相符、來源取消／長度不符、Worker 消失與結束寫入失敗的紀錄測試，訪客回報不能單獨將 unknown 改為完成。（FR-026、SC-009）
 
 ### 實作與驗收
 
-- [ ] T074 [US5] 在 `lib/audit/download-outcomes.ts` 與 `lib/downloads/stream.ts` 完成 T022 觀察原語的嚴格終態更新：unknown 初始、無已知取消且 EOF／已讀 bytes 全交付才 transfer_ended，確定錯誤才 transfer_failed，寫入不明保持 unknown；請求／階段與結果分開，不把時間逾期當成功或失敗。
-- [ ] T075 [US5] 在 `lib/db/cleanup.ts` 實作 maintenance_state 短租約與請求觸發清理，「每分鐘至多一批、每批 500 筆」；按索引移除到期 session／授權工作／短期描述／票據／限流與 30 天紀錄，清秘密且不刪串流所需觀察或維護防重放摘要，不新增 cron，不依 waitUntil 保證持久執行。
+- [ ] T074 [US5] 在 `lib/audit/download-outcomes.ts` 與 `lib/downloads/stream.ts` 完成 T022 觀察原語的嚴格終態更新：unknown 初始、無已知取消且 EOF／已讀 bytes 全交付才 transfer_ended，確定錯誤才 transfer_failed，寫入不明保持 unknown；只更新仍在 30 天內的既有列，不重新插入已清理紀錄；請求／階段與結果分開，不把時間逾期當成功或失敗。
+- [ ] T075 [US5] 在 `lib/db/cleanup.ts` 實作 maintenance_state 短租約與請求觸發清理，「每分鐘至多一批、每批 500 筆」為全部資料列異動的總額；按索引清到期 session／授權工作／短期描述／票據／限流。10 分鐘到期不刪工作／觀察，30 天到期先刪觀察再刪票據與工作，遵守 RESTRICT 並允許分批；不刪期限內串流觀察或維護防重放摘要。晚到終態不重建到期紀錄，清理不取消串流，不新增 cron，不依 waitUntil 保證持久執行。
 - [ ] T076 [US5] 在 `lib/audit/queries.ts` 實作 operation／download 合併投影、kind=all／operation／download、limit 1～100 預設 50、安全 cursor 與可選 worldId；所有查詢先附加最近 30 天條件，不含帳號秘密、上游 URL、成員或原始 IP。
 - [ ] T077 [US5] 在 `app/api/admin/logs/route.ts` 提供 GET 紀錄，驗有效 session、回 items／nextCursor、未知或不適用欄位為 null，連接有界清理而不阻擋正常權限判斷；與共用 API 生命週期整合清理觸發。（FR-025）
 - [ ] T078 [US5] 在 `app/admin/logs/page.tsx`、`components/AuditLogTable.tsx` 與 `lib/audit/format.ts` 顯示安全世界／版本、台灣時區及四種結果，提供分頁／類別／世界篩選、空／載入／失敗狀態，明示伺服器結束不代表訪客儲存或匯入。
@@ -204,10 +204,10 @@ description: "Realms World 公開世界下載站的可追溯實作與驗收任�
 - [ ] T086 在 `specs/001-realms-world-downloads/validation/auth-lifecycle.md` 核對最終版本的新登入／真實續期、取消／拒絕／降速／到期、上游撤權／解密失敗／429／5xx、解除晚到結果與重新連接全部下架；受控故障及真實成功證據分開，不宣稱模擬撤權為真實撤權。（SC-003、SC-007）
 - [ ] T087 在 `docs/operations.md` 與 `specs/001-realms-world-downloads/quickstart.md` 記錄實際可執行的初始化／重設、秘密套用／輪替、過期資料清理、下載停用與恢復、前向遷移、故障排查及部署／DNS 流程；明示無流量時不會當刻物理刪除、HTTP 結束不等於遊戲匯入，移除已過時的操作假設。
 - [ ] T088 在 `.github/workflows/ci.yml` 固定 Node／npm 鎖定安裝、check、單元／D1 整合及 build 必要檢查，具瀏覽器條件時納入 Playwright；執行 quickstart.md 全套必要指令，結果寫入 `specs/001-realms-world-downloads/validation/checks.md`，CI 不使用真實帳號、秘密或大檔持久 fixture。
-- [ ] T089 完成實作一致性／缺漏收斂及憲章檢查，更新 `specs/001-realms-world-downloads/validation/coverage.md`、`specs/001-realms-world-downloads/validation/release.md` 與 `specs/001-realms-world-downloads/tasks.md`；只有 FR／SC 全有實際結果、無必要缺漏、已修正程式重新驗證後，才標示可進入正式部署，不能把待執行或工具不可用當通過。
+- [ ] T089 完成部署前實作一致性／缺漏收斂及憲章檢查，更新 `specs/001-realms-world-downloads/validation/coverage.md`、`specs/001-realms-world-downloads/validation/release.md` 與 `specs/001-realms-world-downloads/tasks.md`；五個故事、G0 及 T080～T088 必要測試均須通過。FR-001 的正式網域部分及 SC-010 的正式入口整合明列待 T091／T092，其他需求及兩者的匿名行為／真實連線／下載／權限／錯誤前置證據須通過，才能標示可部署但未完成正式驗收；不得要求後續正式網域結果作本任務先決條件，也不能將待驗標為通過。
 - [ ] T090 將已驗收程式／遷移／設定保存為完整 Git 提交，透過同一 Sites 保存版本並部署，在 `specs/001-realms-world-downloads/validation/release.md` 記錄 Git／Site 對應及秘密已套用；DOWNLOADS_ENABLED 仍關閉，既有未發布欄位維持不公開，不覆寫 GitHub origin。
 - [ ] T091 透過 Sites 取得 `realms.jkesbyebye.com` 的確切驗證／路由值，在 Bluehost 設定並等待 DNS 與 HTTPS 憑證確認；將實際記錄、狀態與測試時間寫入 `specs/001-realms-world-downloads/validation/domain.md`，禁止猜測目標或把等待狀態當完成。
-- [ ] T092 依 `specs/001-realms-world-downloads/validation/release.md` 的已通過門檻，由管理員明確選擇驗收欄位並確認包含全部歷史後發布；套用 Sites 外層公開存取及 DOWNLOADS_ENABLED=true，驗證正式 HTTPS 網域匿名最新／歷史下載、自製管理登入、未發布隔離與紀錄，失敗立即關閉新下載並修正。（FR-001、SC-010）
+- [ ] T092 確認 T089 部署前門檻與 T091 DNS／HTTPS 通過、無遺留 G0 發布；由管理員明確選擇正式欄位並確認全部歷史後發布，套用 Sites 外層公開存取及 DOWNLOADS_ENABLED=true。驗證正式 HTTPS 網域匿名最新／歷史下載、自製管理登入、未發布隔離與紀錄，補齊 FR-001／SC-010 的正式結果至 `specs/001-realms-world-downloads/validation/coverage.md` 與 `specs/001-realms-world-downloads/validation/release.md`；只有全部 FR／SC 均有通過證據才完成正式驗收，失敗立即關閉新下載、修正並重驗。（FR-001、SC-010）
 - [ ] T093 依 `specs/001-realms-world-downloads/validation/release.md` 的證據更新既有 PR #1 目的／規格／驗證與實際發布版本，完成必要檢查及審查後合併至 main；核實 GitHub 狀態確為 MERGED 並記錄 mergeCommit，草稿／關閉／自動合併排程均不算完成，未合併保留分支。
 - [ ] T094 依 `specs/001-realms-world-downloads/validation/release.md` 交付流程核對遠端 main 含 PR 實際合併結果、同步本機 main，必要時以合併後來源保存 Sites 版本並只重驗受影響的正式入口；在 PR 最終交付記錄保存合併與部署對應，不為回填文件直接新增未審查的 main 提交。
 - [ ] T095 依 `specs/001-realms-world-downloads/validation/release.md` 與憲章 VII，確認工作目錄乾淨、功能分支無 PR 合併後新增未合併提交，切換 main 後刪除本機與對應遠端 `001-realms-world-downloads`、prune 並驗證兩端不存在；壓縮／重定基底合併以 PR 結果核對，保留 specs 及其他分支，最終結果記錄於 PR 並回報使用者。
@@ -226,7 +226,7 @@ description: "Realms World 公開世界下載站的可追溯實作與驗收任�
 | US3 T056～T063 | T030、US1、US2 完成，舊票拒絕可完整整合驗收 | 真實管理／發布／最新下載整合 |
 | US4 T064～T071 | T030、US1 完成；正式驗收另需 US2／US3 發布範圍 | 完整最新與歷史下載 |
 | US5 T072～T079 | T030、US1／US2／US3 事件生產流程完成 | 安全紀錄與保留期限 |
-| 跨功能 T080～T089 | 五個故事完成 | 通過必要門檻的正式候選版本 |
+| 跨功能 T080～T089 | 五個故事完成 | 部署前門檻通過；正式網域部分仍待 T091／T092 |
 | 部署／DNS／正式驗收 T090～T092 | T089 完成；同一 Site、精確 DNS 及管理員明確發布 | 正式交付 |
 | PR／合併／清理 T093～T095 | 前述必要驗收完成及 PR 審查符合規則 | 實際交付與兩端分支清理 |
 
@@ -245,7 +245,7 @@ flowchart TD
     U1 --> U5["US5 紀錄"]
     U2 --> U5
     U3 --> U5
-    U3 --> Verify["T080～T089 完整驗收"]
+    U3 --> Verify["T080～T089 部署前驗收"]
     U4 --> Verify
     U5 --> Verify
     Verify --> Release["T090～T092 部署與正式網域驗收"]
@@ -259,7 +259,8 @@ flowchart TD
 - T010～T012 的失敗測試先於核心實作，T013～T023 序列整合；T026 可以依真實證據補上 T019 保守拒絕的映射，但不能倒過來假設已可用。
 - US1 先完成工作／票據／串流，再接路由與原生表單；US4 接入同一工作與票據，不另建無發布檢查的下載。
 - US2 先完成有效工作階段／維護／授權路由，再接管理 UI；US3 沿用這些路由及目前連線建立發布範圍。
-- US5 延伸早期已寫入的安全觀察，不延後實作基本紀錄或 30 天讀取限制；清理不能移除防重放摘要或正在串流所需資料。
+- US5 延伸早期已寫入的安全觀察，不延後實作基本紀錄或 30 天讀取限制；清理不能移除防重放摘要或期限內串流觀察，超過期限不重建紀錄、不取消傳輸。
+- T089 只批准部署前已可驗證的部分；T091／T092 補齊正式網域與匿名入口，T092 通過才可宣告全部 FR／SC 驗收完成，不能形成前置檢查等待後置驗收的循環。
 - 正式驗收失敗必須修正並重驗相關項目；只有已通過且程式／設定未變的證據可以沿用，避免無依據重跑或假設舊結果仍有效。
 - T093～T095 的 Git／平台結果以 PR 最終交付記錄及工具核實為準；合併前 tasks.md 是當時狀態快照，不為事後勾選回填而在 main 新增未審查提交或重建已清理分支。
 
@@ -351,4 +352,4 @@ flowchart TD
 
 文件檢查須確認 95 個唯一且連續的 T001～T095、全部未勾選、故事標記正確、每項具明確檔案路徑、15 個 [P] 僅在已列出的獨立批次、27 項 FR 與 10 項 SC 均可追溯。文件符合此格式不代表程式測試或真實能力已通過。
 
-下一個 SDD 步驟為 `$speckit-analyze`，通過一致性檢查後才進入 `$speckit-implement`；本次不執行任務。
+文件已完成修正與重複一致性分析，結果見[分析紀錄](checklists/analysis.md)。下一個 SDD 步驟為 `$speckit-implement`，仍先執行 T001 的最新版本入口複查；本次沒有執行應用程式開發或真實驗收任務。
