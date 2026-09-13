@@ -33,4 +33,4 @@ Sites 版本 5（Git `c93eb8b0cf21c68abe9c745f9e2eb3eb4a0a9290`）於 2026-09-13
 
 Sites 版本 6 於 2026-09-13 23:16 UTC 先後讀到兩個 Realm 的 5 份及 11 份備份。每份頂層只有 backupId、lastModifiedDate、size、metadata；metadata 包含描述、名稱、seed、遊戲設定及版本，但沒有明示 slotId 或內容身分。外層為 backups 陣列，未廣告分頁。不能據此把備份分配到任何欄位。安全摘要不含原始私有值。
 
-使用者隨後明確指定只發布最新存檔。此結果只阻止歷史能力，不阻止由 ownerUUID、Realm ID、slotId 與官方固定 latest 端點核對的最新範圍。latest-slot-v1 路由不是歷史證據。真實最新來源、檔案及匯入結果另行紀錄；尚未完成項目不宣告通過。
+使用者隨後明確指定只發布最新存檔。此結果只阻止歷史能力，不阻止由 ownerUUID、Realm ID、slotId 與官方固定 latest 端點核對的最新範圍。latest-slot-v1 路由不是歷史證據。版本 7 已發布所選欄位，版本 8 已實際下載一份最新檔案，證據見 [最新下載實測](g0-downloads.md)；匯入及其他未完成項目不宣告通過。
