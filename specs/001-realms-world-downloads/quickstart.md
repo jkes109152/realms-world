@@ -4,11 +4,11 @@
 
 **依據**：[計畫](plan.md)、[HTTP 契約](contracts/http-api.md)、[維護契約](contracts/maintenance.md)
 
-**狀態**：本次只有 SDD 文件。以下 npm 指令是實作階段必須提供的操作入口，目前沒有應用程式可啟動，不代表已通過驗收。
+**狀態**：T001～T023 最小共用核心已完成，可啟動本機驗證入口；47 項本機測試、型別、ESLint 及建置通過。真實 G0 與完整產品尚未完成；以下後續驗收步驟不代表已通過。
 
 ## 1. 前置條件
 
-- Node 22.13.0 以上及 npm；本機已確認 Node 24.19.0，但 npm 尚不可用。實作時先從 Sites 支援的 runtime／套件管理安裝流程取得 npm，不變更不相關的全域設定。
+- Node 22.13.0 以上及 npm；本機已確認 Node 24.19.0，npm 12.0.2 官方套件已驗證並放在忽略的 `.tools/npm-runtime/package/bin/npm-cli.js`。本工作區可用 `node .tools/npm-runtime/package/bin/npm-cli.js` 取代下列 npm，不變更全域設定。
 - Git、專案本機 Spec Kit，以及對 GitHub realms-world 的權限。
 - Sites 的建立、D1、秘密、保存版本與部署能力；第一個驗證 Site 仍是本產品同一個 Site。
 - 管理員可親自完成 Microsoft 裝置碼授權，帳號擁有 Realm。
@@ -28,13 +28,13 @@ $env:SPECIFY_FEATURE = '001-realms-world-downloads'
 & .\.specify\scripts\powershell\check-prerequisites.ps1 -Json -RequireSpec
 ```
 
-預期分支為 `001-realms-world-downloads`，可辨識 research.md、data-model.md、contracts/、quickstart.md；[任務清單](tasks.md)已建立，若要一併檢查可加 `-RequireTasks -IncludeTasks`。文件修正與重複分析結果見[分析紀錄](checklists/analysis.md)，下一步執行 `$speckit-implement` 並先完成 T001 入口複查；本指南不取代任務清單或自行啟動全部實作。
+預期分支為 `001-realms-world-downloads`，可辨識 research.md、data-model.md、contracts/、quickstart.md；[任務清單](tasks.md)已建立，若要一併檢查可加 `-RequireTasks -IncludeTasks`。文件修正與重複分析結果見[分析紀錄](checklists/analysis.md)，T001 入口複查已完成，目前繼續 G0；本指南不取代任務清單或跳過其門檻。
 
 ## 3. 實作階段建立本機環境
 
 Sites starter 若要求空目錄，先在獨立暫存目錄建立，再合併必要新檔至本儲存庫；保留 SDD、技能及 Git。沿用 starter 鎖定版本，宣告 D1 DB，不宣告世界 R2 儲存。
 
-實作必須提供以下 package scripts：
+以下 package scripts 已設定；test:e2e 與大型 test:stream 驗收仍待後續任務，入口存在不代表可通過：
 
 | 指令 | 行為 |
 |---|---|

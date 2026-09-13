@@ -1,0 +1,57 @@
+import { env } from "cloudflare:workers";
+import { expect, it } from "vitest";
+import { GET, POST } from "@/app/api/admin/verification/[operation]/route";
+import { createSession } from "@/lib/auth/session";
+import { requireSession } from "@/lib/auth/session";
+import { startConnection } from "@/lib/realms/connection-service";
+
+const now = () => Date.now();
+const origin = "https://realms.example.test";
+const context = (operation: string) => ({ params: Promise.resolve({ operation }) });
+async function admin() {
+  const time = now();
+  await env.DB.prepare("INSERT INTO admin_accounts VALUES(1,'admin','fixture-hash',1,?,?)").bind(time, time).run();
+  return createSession(env.DB, 1, time);
+}
+function request(operation: string, token?: string, body?: unknown, csrf?: string) {
+  return new Request(`${origin}/api/admin/verification/${operation}`, {
+    method: body === undefined ? "GET" : "POST",
+    headers: { ...(token ? { Cookie: `__Host-realms_session=${token}` } : {}), Origin: origin, "Content-Type": "application/json", ...(csrf ? { "X-CSRF-Token": csrf } : {}) },
+    ...(body === undefined ? {} : { body: JSON.stringify(body) }),
+  });
+}
+it("驗證入口要求有效管理員 session", async () => {
+  expect((await GET(request("connection"), context("connection"))).status).toBe(401);
+  const session = await admin();
+  await env.DB.prepare("DELETE FROM admin_sessions").run();
+  expect((await GET(request("connection", session.token), context("connection"))).status).toBe(401);
+});
+it("未知操作、方法錯誤、缺 CSRF 與跨來源操作均拒絕", async () => {
+  const session = await admin();
+  expect((await GET(request("sql", session.token), context("sql"))).status).toBe(404);
+  expect((await GET(request("connection-start", session.token), context("connection-start"))).status).toBe(405);
+  expect((await POST(request("disconnect", session.token, {}), context("disconnect"))).status).toBe(403);
+  const cross = request("disconnect", session.token, {}, session.csrfToken); cross.headers.set("Origin", "https://evil.example.test");
+  expect((await POST(cross, context("disconnect"))).status).toBe(403);
+});
+it("不接收任意 URL 或 SQL，未發布世界與舊票都拒絕", async () => {
+  const session = await admin();
+  expect((await POST(request("downloads", session.token, { worldId: "unknown", selection: { kind: "latest" }, url: "https://internal.invalid" }, session.csrfToken), context("downloads"))).status).toBe(400);
+  expect((await POST(request("downloads", session.token, { worldId: "unknown", selection: { kind: "latest" } }, session.csrfToken), context("downloads"))).status).toBe(404);
+  const form = new Request(`${origin}/api/admin/verification/redeem`, { method: "POST", headers: { Cookie: `__Host-realms_session=${session.token}`, Origin: origin, "Content-Type": "application/x-www-form-urlencoded" }, body: new URLSearchParams({ ticket: "a".repeat(43), csrfToken: session.csrfToken }) });
+  expect((await POST(form, context("redeem"))).status).toBe(404);
+});
+it("DOWNLOADS_ENABLED=false 仍只允許管理員讀取安全連線狀態", async () => {
+  const session = await admin();
+  const response = await GET(request("connection", session.token), context("connection"));
+  expect(response.status).toBe(200);
+  expect(JSON.stringify(await response.json())).not.toMatch(/credential_box|refresh_token|xstsToken/);
+});
+it("已登入的管理員可建立尚未對外請求的授權工作", async () => {
+  const session = await admin();
+  const adminContext = await requireSession(env.DB, session.token, Date.now());
+  const started = await startConnection({ ...env, AUTH_ACTIVE_KEY_ID: "fixture", AUTH_KEYRING: JSON.stringify({ fixture: "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=" }) }, adminContext);
+  expect(started.stage).toBe("requesting_code");
+  expect(started.userCode).toBeNull();
+  expect((await env.DB.prepare("SELECT status FROM realm_connections WHERE id=1").first())?.status).toBe("authorizing");
+});
