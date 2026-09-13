@@ -8,7 +8,7 @@
 
 **憲章版本**：2.0.0
 
-**狀態**：第 0 階段研究與第 1 階段設計完成；應用程式、任務清單與真實串接驗證尚未執行。
+**狀態**：第 0 階段研究與第 1 階段設計完成；任務清單已產生，應用程式與真實串接驗證尚未執行。
 
 ## 摘要
 
@@ -66,6 +66,7 @@ specs/001-realms-world-downloads/
 ├── research.md                # 研究與取捨
 ├── data-model.md              # 實體與生命週期
 ├── quickstart.md              # 實作後的驗證指南
+├── tasks.md                   # 依賴排序的實作與驗收任務
 ├── contracts/
 │   ├── http-api.md            # 網站介面
 │   ├── realms-adapter.md      # 官方轉接器
@@ -74,7 +75,7 @@ specs/001-realms-world-downloads/
     └── requirements.md        # 需求品質審查
 ```
 
-`tasks.md` 由下一個 `$speckit-tasks` 階段產生，本次不建立。
+[tasks.md](tasks.md) 已由 `$speckit-tasks` 產生，包含 95 項尚未執行的任務；本計畫保留設計與門檻，任務清單提供具體檔案與執行順序。
 
 ### 預定程式碼
 
@@ -175,6 +176,6 @@ G0 可實作最小串接與測試程式，但必須先於完整產品。執行 G
 
 ## 交付規則
 
-本次只完成設計；下一步 `$speckit-tasks`，再以 `$speckit-analyze` 檢查一致性後實作。功能仍在 `001-realms-world-downloads`，以 PR 交付至 main；草稿 PR 不代表完成或已合併。
+設計與任務拆解已完成；下一步以 `$speckit-analyze` 檢查一致性，通過後再實作。功能仍在 `001-realms-world-downloads`，以 PR 交付至 main；草稿 PR 不代表完成或已合併。
 
 只有確認 PR 實際已合併、main 包含合併結果且沒有額外未合併工作，才同步本機 main、切換分支、清除對應兩端功能分支並 prune 驗證。不能因計畫完成而刪除後續開發仍需使用的分支。

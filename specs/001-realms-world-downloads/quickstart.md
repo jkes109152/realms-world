@@ -28,7 +28,7 @@ $env:SPECIFY_FEATURE = '001-realms-world-downloads'
 & .\.specify\scripts\powershell\check-prerequisites.ps1 -Json -RequireSpec
 ```
 
-預期分支為 `001-realms-world-downloads`，可辨識 research.md、data-model.md、contracts/、quickstart.md。下一步依序執行 `$speckit-tasks`、`$speckit-analyze`；本指南不取代任務清單或啟動全部實作。
+預期分支為 `001-realms-world-downloads`，可辨識 research.md、data-model.md、contracts/、quickstart.md；[任務清單](tasks.md)已建立，若要一併檢查可加 `-RequireTasks -IncludeTasks`。下一步執行 `$speckit-analyze`；本指南不取代任務清單或啟動全部實作。
 
 ## 3. 實作階段建立本機環境
 

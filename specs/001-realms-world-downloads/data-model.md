@@ -154,7 +154,7 @@ encrypted_descriptor 包含上游 URL、Bearer token、到期及必要 headers�
 
 rate_limit_windows 以 scope、key_digest、window_start 為組合主鍵，含 count、expires_at。原子 upsert 後判斷限額，來源及全站都計數；不以記憶體變數作跨請求權威。從平台可信來源取得 IP，透過獨立秘密 HMAC 與 UTC 日期產生當日識別；過期窗口最晚 24 小時後可清理。
 
-maintenance_state 保存清理 owner／expires_at，每分鐘至多一批、每批 500 筆。查詢一律先檢查期限，清理失敗留待後续流量，不能使過期資料恢復可讀。
+maintenance_state 保存清理 owner／expires_at，每分鐘至多一批、每批 500 筆。查詢一律先檢查期限，清理失敗留待後續流量，不能使過期資料恢復可讀。
 
 | 資料 | 有效／可讀期限 | 清理 |
 |---|---|---|

@@ -45,7 +45,8 @@
 - [技術規劃交接](specs/001-realms-world-downloads/planning-input.md)保存 Sites、自訂網域、
   Git、授權與下載限制等已確認的規劃輸入，不取代後續 `plan.md`。
 - 已完成[技術計畫](specs/001-realms-world-downloads/plan.md)、研究、資料模型、介面契約與驗證指南。
-- 下一步為 `$speckit-tasks`，再執行 `$speckit-analyze`；尚未建立應用程式或 `tasks.md`，尚未部署網站。
+- 已完成[任務清單](specs/001-realms-world-downloads/tasks.md)：95 項任務、5 個使用者故事、15 項可在指定批次平行執行的工作，全部尚未執行。
+- 下一步為 `$speckit-analyze`，通過一致性檢查後再執行 `$speckit-implement`；尚未建立應用程式或部署網站。
 - Sites／Realms 授權、續期、欄位歸屬、真實下載及遊戲匯入仍待 G0 驗證，不以文件完成代表串接可用。
 
 `.specify/feature.json` 保存目前功能目錄，屬忽略追蹤的本機狀態。
