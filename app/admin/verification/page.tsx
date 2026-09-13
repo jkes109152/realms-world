@@ -1,5 +1,4 @@
 "use client";
-import Link from "next/link";
 import { useCallback, useEffect, useState, type FormEvent } from "react";
 import { Box, KeyRound, ExternalLink, RefreshCw, Download, ShieldCheck, Unplug } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -80,7 +79,8 @@ export default function VerificationPage() {
     setSubmitted(false); setJob({ ...created, state: "preparing" });
   }); }
   return <div className="rw-shell">
-    <header className="rw-header"><Link href="/" className="rw-brand"><Box aria-hidden="true" /> REALMS WORLD</Link><span className="rw-status">● 管理員驗證</span></header>
+    {/* eslint-disable-next-line @next/next/no-html-link-for-pages -- 已重現 vinext 用戶端導頁例外，回首頁使用瀏覽器原生導航。 */}
+    <header className="rw-header"><a href="/" className="rw-brand"><Box aria-hidden="true" /> REALMS WORLD</a><span className="rw-status">● 管理員驗證</span></header>
     <main className="rw-workspace"><div className="rw-page-heading"><div><p className="rw-kicker">管理員工作區</p><h1>連接你的世界</h1><p className="rw-muted">完成授權與下載驗證，確認世界可以完整抵達。</p></div><div className="rw-private"><ShieldCheck size={18} /> 公開下載關閉</div></div>
       {error && <div className="rw-error" role="alert">{error}</div>}
       {checking ? <p role="status" className="rw-panel">正在確認登入狀態…</p> : !session ?
