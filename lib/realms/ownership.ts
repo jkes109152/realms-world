@@ -8,6 +8,11 @@ export function sourceId(value: unknown): string {
   return id;
 }
 
+// 最新來源綁定官方路由的 Realm／欄位，不表示不可變的世界內容或歷史備份身分。
+export function latestSlotIdentity(realmId: string, slotId: string) {
+  return `latest-slot-v1:${sourceId(realmId)}:${sourceId(slotId)}`;
+}
+
 export function selectOwnedRealms(input: unknown[], ownerXuid: string, now: number): OwnedRealm[] {
   return input.flatMap((value) => {
     const realm = record(value);

@@ -15,8 +15,10 @@ export async function createJob(db: D1Database, input: { worldPublicId: string; 
     db.prepare(`INSERT INTO download_jobs(id,status_secret_digest,world_slot_id,connection_generation,publication_version,selector_kind,source_backup_id,association_evidence,next_poll_at,expires_at,status_expires_at,created_at)
       SELECT ?,?,w.id,c.generation,w.publication_version,?,?,?,?,?,?,? FROM world_slots w JOIN realms r ON r.id=w.realm_id JOIN realm_connections c ON c.id=r.connection_id
       WHERE w.public_id=? AND w.published=1 AND w.association_status='verified' AND w.source_identity IS NOT NULL
+      AND (?='latest' OR w.publication_scope='all_archives')
+      AND (?!='latest' OR w.source_identity=?)
       AND w.connection_generation=c.generation AND r.connection_generation=c.generation AND c.status='connected' AND c.owner_xuid=r.verified_owner_xuid RETURNING id`)
-      .bind(id, await digest(secret), input.kind, input.sourceBackupId, input.associationEvidence, now, now + 600000, now + 2592000000, now, input.worldPublicId),
+      .bind(id, await digest(secret), input.kind, input.sourceBackupId, input.associationEvidence, now, now + 600000, now + 2592000000, now, input.worldPublicId, input.kind, input.kind, input.associationEvidence),
     db.prepare(`INSERT INTO download_attempts(id,job_id,world_public_id,world_display_name,archive_label,requested_at)
       SELECT ?,j.id,w.public_id,w.display_name,?,j.created_at FROM download_jobs j JOIN world_slots w ON w.id=j.world_slot_id WHERE j.id=?`).bind(id, input.archiveLabel, id),
   ]);

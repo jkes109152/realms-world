@@ -4,12 +4,13 @@ import { clientVersion, downloadPolicy, type AppEnv } from "@/lib/security/env";
 import { readKeyring, seal, unseal } from "@/lib/security/crypto-box";
 import { createJob, visibleJob, claimDownloadStep, savePending, forceAuthRetry, failStep, readyJob, consumeTicket, beginStreaming, type DownloadJob } from "@/lib/db/downloads";
 import { getValidRealmsAuthorization } from "@/lib/realms/authorization";
-import { listBackupsForVerifiedSlot, prepareWorldDownload, type VerifiedSelection } from "@/lib/realms/client";
+import { listBackupsForVerifiedSlot, listWorldSlots, prepareWorldDownload, type VerifiedSelection } from "@/lib/realms/client";
+import { latestSlotIdentity } from "@/lib/realms/ownership";
 import type { DownloadDescriptor, Selection, VerifiedSlot } from "@/lib/realms/types";
 import { openValidatedDownload } from "./stream";
 import { finishTransfer, recentDownloadAttempt } from "@/lib/audit/writer";
 
-type StoredWorld = { id: number; source_realm_id: string; source_slot_id: string; source_identity: string; display_name: string; fetched_at: number; public_id: string };
+type StoredWorld = { id: number; source_realm_id: string; source_slot_id: string; source_identity: string; display_name: string; fetched_at: number; public_id: string; publication_scope: string };
 async function publishedWorld(env: AppEnv, worldId: string): Promise<StoredWorld> {
   const world = await env.DB.prepare(`SELECT w.*,r.source_realm_id FROM world_slots w JOIN realms r ON r.id=w.realm_id JOIN realm_connections c ON c.id=r.connection_id
     WHERE w.public_id=? AND w.published=1 AND w.association_status='verified' AND w.source_identity IS NOT NULL AND c.status='connected'
@@ -22,6 +23,7 @@ function verifiedSlot(world: StoredWorld): VerifiedSlot {
 }
 export async function verificationArchives(env: AppEnv, worldId: string) {
   const world = await publishedWorld(env, worldId);
+  if (world.publication_scope !== "all_archives") throw new AppError("not_found", 404);
   const auth = await getValidRealmsAuthorization(env);
   if (auth.kind !== "ready") throw new AppError("unavailable", 503, 2);
   return listBackupsForVerifiedSlot(auth.authorization, verifiedSlot(world), worldId, clientVersion(env), Date.now());
@@ -65,6 +67,11 @@ export async function stepVerificationDownload(env: AppEnv, id: string, secret: 
       return verificationStatus(env, id, secret);
     }
     const world = await worldForJob(env, authClaim);
+    if (authClaim.selector_kind === "latest") {
+      const slots = await listWorldSlots(auth.authorization, world.source_realm_id, clientVersion(env), Date.now());
+      const matching = slots.filter((slot) => slot.sourceSlotId === world.source_slot_id && slot.associationStatus !== "empty");
+      if (matching.length !== 1 || world.source_identity !== latestSlotIdentity(world.source_realm_id, world.source_slot_id)) throw new AppError("slot_unverifiable", 409);
+    }
     let selection: VerifiedSelection = { kind: "latest" };
     if (authClaim.selector_kind === "backup" && authClaim.stage !== "preparing") {
       const archives = await listBackupsForVerifiedSlot(auth.authorization, verifiedSlot(world), world.public_id, clientVersion(env), Date.now());

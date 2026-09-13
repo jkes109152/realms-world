@@ -8,6 +8,13 @@
       "when": 1789316350128,
       "tag": "0000_realms_world",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "6",
+      "when": 1789341794999,
+      "tag": "0001_third_black_tarantula",
+      "breakpoints": true
     }
   ]
 }

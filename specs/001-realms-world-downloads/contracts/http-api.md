@@ -105,24 +105,24 @@ prepareExpiresAt 對應資料模型 expires_at；statusExpiresAt 對應 status_e
 | GET /api/admin/worlds | 無 | 擁有 Realm／欄位的管理投影、來源時間及不可發布原因 |
 | POST /api/admin/worlds/refresh | 空物件 | 200 新核對的管理列表；來源失敗明確回錯誤 |
 | PATCH /api/admin/worlds/{worldId} | `{displayName?,description?}` | 200 更新後的網站顯示設定 |
-| PUT /api/admin/worlds/{worldId}/publication | `{published,expectedVersion,acknowledgeAllArchives?}` | 200 發布狀態與新版本；版本競爭 409 |
+| PUT /api/admin/worlds/{worldId}/publication | `{published,expectedVersion,acknowledgeLatest?}` | 200 發布狀態與新版本；版本競爭 409 |
 
-首次發布及下架後重新發布都要求 acknowledgeAllArchives=true，介面先說明包含最新、全部現存及未來可用歷史存檔。發布前重新核對擁有權與欄位歸屬，空欄位或歸屬不明回 409。下架不需要再向上游成功查詢，直接以主庫版本生效。
+首次發布及下架後重新發布都要求 acknowledgeLatest=true，介面先說明只包含該欄位目前及未來的最新存檔（包含遊戲中替換後的新內容）。發布前重新核對擁有權、Realm 可用性、欄位存在及非空、官方 latest 描述與精確 HTTPS 主機；失敗不發布。下架不需要再向上游成功查詢，直接以主庫版本生效。
 
 Microsoft 授權開始可能尚需多段 HTTP；stage=requesting_code 時顯示準備授權碼並繼續分次 step，不建立空的登入連結。取得官方 challenge 後 stage=waiting_for_user，才顯示已核對的驗證網址與 user code；後續交換 token 為 exchanging_tokens，challenge 欄位可清為 null。初始化期限及官方到期轉換見資料模型，不能自行延長官方有效期。絕不顯示本站 Microsoft 密碼欄位。工作只能由建立者且有效的網站 session 推進；session 刪除或密碼重設後尚未完成授權不能復活。
 
 ## G0 管理員驗證入口
 
-G0 共用核心階段即提供最小發布／下架服務；後續 US3 延伸同一服務，不另寫測試專用 SQL 或略過發布判斷。所有欄位初始 published=false。管理員登入、真實擁有權及欄位核對完成後，在驗證頁逐一選取欄位，確認最新、全部現存及未來可用歷史的發布範圍，再以 expectedVersion 明確發布。
+G0 共用核心階段即提供最小發布／下架服務；後續 US3 延伸同一服務，不另寫測試專用 SQL 或略過發布判斷。所有欄位初始 published=false。管理員登入、真實擁有權及欄位核對完成後，在驗證頁逐一選取欄位，確認只公開該欄位目前及未來最新存檔的範圍，再以 expectedVersion 明確發布。
 
 | 方法與路徑 | operation 白名單 | 輸入與行為 |
 |---|---|---|
 | GET /api/admin/verification/{operation} | connection、worlds、archives、download-status | connection／worlds 沿用管理投影；archives 以 worldId 查已核對且已發布欄位；download-status 以 jobId 與 X-Download-Capability 查同一工作 |
 | POST /api/admin/verification/{operation} | connection-start、connection-step、connection-cancel、disconnect、publication、downloads、download-step、redeem | 只委派至同一授權、發布、下載與串流核心；不接受任意 URL／SQL／操作名稱 |
 
-G0 另提供 GET association，僅接受 worldId，要求有效管理員 session，並將 worldId 對應至目前連線世代且擁有者相符的欄位；之後只讀取該 Realm 的官方詳情及備份端點。它可在未發布時檢查發布條件，但不提供檔案、不變更發布與作用中欄位。瀏覽器只收到備份數量與待核對原因；安全診斷只記欄位名稱／型別、數量及明示 slot 欄位的相等計數，不記私人原始值、ID、名稱或憑證。結構摘要是研究證據，不能直接將欄位標為 verified。
+G0 另提供 GET association，僅接受 worldId，要求有效管理員 session，並將 worldId 對應至目前連線世代且擁有者相符的欄位；之後只讀取該 Realm 的官方詳情及備份端點。它可在未發布時研究歷史歸屬，並非最新發布的必要條件，但不提供檔案、不變更發布與作用中欄位。瀏覽器只收到備份數量與待核對原因；安全診斷只記欄位名稱／型別、數量及明示 slot 欄位的相等計數，不記私人原始值、ID、名稱或憑證。結構摘要是研究證據，不能直接將欄位標為 verified。
 
-POST 的 connection-start／disconnect 使用空物件；connection-step／connection-cancel 使用 `{attemptId}`。publication 使用 `{worldId,published,expectedVersion,acknowledgeAllArchives?}`，發布條件與正式發布 API 完全相同。downloads 使用 `{worldId,selection}`；download-step 使用 `{jobId}` 與 capability。這些操作的成功資料、錯誤及頻率規則沿用對應正式契約，connection-cancel／disconnect 回 204。未知 operation 回 404，白名單但方法錯誤回 405。
+POST 的 connection-start／disconnect 使用空物件；connection-step／connection-cancel 使用 `{attemptId}`。publication 使用 `{worldId,published,expectedVersion,acknowledgeLatest?}`，發布條件與正式發布 API 完全相同。downloads 使用 `{worldId,selection}`；download-step 使用 `{jobId}` 與 capability。這些操作的成功資料、錯誤及頻率規則沿用對應正式契約，connection-cancel／disconnect 回 204。未知 operation 回 404，白名單但方法錯誤回 405。
 
 GET connection 附加 `pendingAttempt`：僅目前有效 session、credential_version 與連線 generation 同時符合建立者時，回傳既有授權工作的安全投影（attemptId、state、stage、userCode、verificationUri、expiresAt、retryAfterSeconds）；其餘情況為 null。重新載入頁面可接續分次 step，遵守既有輪詢時間與租約；過期代碼不再顯示，由下一次受保護 step 結束工作。不回傳裝置秘密、加密狀態或 token，也不移轉其他 session 的授權。
 
@@ -153,3 +153,6 @@ data 為 `{items,nextCursor}`。每項含 id、occurredAt、category、worldDisp
 | 502 invalid_archive | 無法取得有效世界檔 | 來源狀態或格式驗證失敗 |
 
 若既要保護未公開存在性又遇到外部錯誤，先通過主庫公開檢查才可顯示 archive_gone 等較具體內容。失效票據與不存在票據對外一致。
+
+
+最新發布回應另含 publicationScope="latest"。POST publication 為管理員明確操作：通過登入、Origin、CSRF 與建立操作限流後，最多讀一次官方欄位詳情及一次 latest 描述；不自動輪詢，不取得世界 bytes，不核發下載票。官方仍在準備時回 503 world_preparing 與 Retry-After，保持私有；使用者稍後可再發布。真正下載仍依工作 20 次準備上限執行。latest 範圍的 archives 查詢與 backup 工作一律 404，不能使用舊版 acknowledgeAllArchives 欄位擴大授權。

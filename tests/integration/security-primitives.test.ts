@@ -119,7 +119,7 @@ it("世界準備只在取得租約時扣次數，並行／接手最多 20 次，
     env.DB.prepare("INSERT INTO realm_connections(id,generation,status,owner_xuid,updated_at) VALUES(1,1,'connected','fixture-owner',?)").bind(initial),
     env.DB.prepare("INSERT INTO realms(id,source_realm_id,connection_id,connection_generation,verified_owner_xuid,source_name,availability,fetched_at) VALUES(1,'fixture-realm',1,1,'fixture-owner','人工 Realm','available',?)").bind(initial),
     env.DB.prepare("INSERT INTO world_slots(id,public_id,realm_id,source_slot_id,connection_generation,source_identity,association_status,display_name,published,publication_version,fetched_at,updated_at) VALUES(1,'fixture-world',1,'2',1,'fixture-content','verified','人工世界',1,1,?,?)").bind(initial, initial),
-    env.DB.prepare("INSERT INTO download_jobs(id,status_secret_digest,world_slot_id,connection_generation,publication_version,selector_kind,association_evidence,next_poll_at,expires_at,status_expires_at,created_at) VALUES('fixture-job',?,1,1,1,'latest','人工歸屬證據',?,?,?,?)").bind("f".repeat(64), initial, initial + 600000, initial + 2592000000, initial),
+    env.DB.prepare("INSERT INTO download_jobs(id,status_secret_digest,world_slot_id,connection_generation,publication_version,selector_kind,association_evidence,next_poll_at,expires_at,status_expires_at,created_at) VALUES('fixture-job',?,1,1,1,'latest','fixture-content',?,?,?,?)").bind("f".repeat(64), initial, initial + 600000, initial + 2592000000, initial),
   ]);
   await claimDownloadStep(env.DB, "fixture-job", "authorization", time.now(), "authorization");
   expect((await env.DB.prepare("SELECT prepare_attempts n FROM download_jobs").first<{n:number}>())?.n).toBe(0);

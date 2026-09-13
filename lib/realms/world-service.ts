@@ -3,6 +3,7 @@ import { clientVersion, type AppEnv } from "@/lib/security/env";
 import { randomSecret } from "@/lib/security/crypto-box";
 import { getValidRealmsAuthorization } from "./authorization";
 import { listOwnedRealms, listWorldSlots } from "./client";
+import { latestSlotIdentity } from "./ownership";
 import { currentPublishedJob } from "@/lib/db/conditional-writes";
 
 // 只有完整讀完擁有者列表及每個 Realm 的欄位後，才以「未出現」撤銷舊資料。
@@ -36,16 +37,22 @@ export async function refreshWorlds(env: AppEnv) {
     if (!saved) throw new AppError("conflict", 409);
     for (const slot of slots) {
       present.push({ realmId: realm.sourceRealmId, slotId: slot.sourceSlotId });
+      const previous = await env.DB.prepare("SELECT source_identity,association_status FROM world_slots WHERE realm_id=? AND source_slot_id=?")
+        .bind(saved.id, slot.sourceSlotId).first<{source_identity:string|null;association_status:string}>();
+      const keepLatest = realm.availability === "available" && slot.associationStatus !== "empty"
+        && previous?.association_status === "verified" && previous.source_identity === latestSlotIdentity(realm.sourceRealmId, slot.sourceSlotId);
+      const identity = keepLatest ? previous.source_identity : slot.sourceIdentity;
+      const association = realm.availability !== "available" ? "unavailable" : keepLatest ? "verified" : slot.associationStatus;
       await env.DB.prepare(`INSERT INTO world_slots(public_id,realm_id,source_slot_id,connection_generation,source_identity,association_status,display_name,fetched_at,updated_at)
         SELECT ?,?,?,generation,?,?,?,?,? FROM realm_connections WHERE id=1 AND generation=? AND status='connected' AND owner_xuid=?
         ON CONFLICT(realm_id,source_slot_id) DO UPDATE SET source_identity=excluded.source_identity,association_status=excluded.association_status,fetched_at=excluded.fetched_at,
         published=CASE WHEN world_slots.source_identity IS excluded.source_identity AND excluded.association_status='verified' THEN world_slots.published ELSE 0 END,
         publication_version=world_slots.publication_version+CASE WHEN world_slots.source_identity IS excluded.source_identity AND excluded.association_status='verified' THEN 0 ELSE 1 END`)
-        .bind(randomSecret(), saved.id, slot.sourceSlotId, slot.sourceIdentity, slot.associationStatus, [...slot.name].slice(0, 100).join(""), slot.fetchedAt, Date.now(), auth.generation, auth.authorization.ownerXuid).run();
+        .bind(randomSecret(), saved.id, slot.sourceSlotId, identity, association, [...slot.name].slice(0, 100).join(""), slot.fetchedAt, Date.now(), auth.generation, auth.authorization.ownerXuid).run();
     }
   }
   await invalidateMissingSlots(env.DB, auth.generation, auth.authorization.ownerXuid, present, Date.now());
   return env.DB.prepare(`SELECT w.public_id AS worldId,w.display_name AS displayName,w.association_status AS associationStatus,w.published,w.publication_version AS publicationVersion,
-    w.source_slot_id AS slotId,r.source_name AS realmName FROM world_slots w JOIN realms r ON r.id=w.realm_id JOIN realm_connections c ON c.id=1
+    w.publication_scope AS publicationScope,w.source_slot_id AS slotId,r.source_name AS realmName FROM world_slots w JOIN realms r ON r.id=w.realm_id JOIN realm_connections c ON c.id=1
     WHERE w.connection_generation=c.generation AND r.connection_generation=c.generation AND c.status='connected' ORDER BY r.id,w.source_slot_id`).all();
 }

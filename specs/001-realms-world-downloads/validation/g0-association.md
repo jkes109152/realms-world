@@ -27,3 +27,10 @@ Sites 版本 5（Git `c93eb8b0cf21c68abe9c745f9e2eb3eb4a0a9290`）於 2026-09-13
 ## 發布問題調查
 
 使用者回報發布按鈕停用。程式確認 projectSlots 與 verifiedBackupAssociation 尚未填入真實映射，所有非空欄位均保守拒絕，並非使用者操作錯誤。新增受同一管理員／擁有者限制的唯讀 association 檢查，先取得官方欄位與備份結構摘要；不修改 published、不產生下載描述、不切換作用中欄位。兩項新增測試先因模組不存在而失敗，再完成實作後通過，涵蓋固定端點、私人值不輸出及受邀 Realm 不查備份。真實摘要待部署後核對。
+
+
+## 真實歷史結構與最新範圍修訂
+
+Sites 版本 6 於 2026-09-13 23:16 UTC 先後讀到兩個 Realm 的 5 份及 11 份備份。每份頂層只有 backupId、lastModifiedDate、size、metadata；metadata 包含描述、名稱、seed、遊戲設定及版本，但沒有明示 slotId 或內容身分。外層為 backups 陣列，未廣告分頁。不能據此把備份分配到任何欄位。安全摘要不含原始私有值。
+
+使用者隨後明確指定只發布最新存檔。此結果只阻止歷史能力，不阻止由 ownerUUID、Realm ID、slotId 與官方固定 latest 端點核對的最新範圍。latest-slot-v1 路由不是歷史證據。真實最新來源、檔案及匯入結果另行紀錄；尚未完成項目不宣告通過。

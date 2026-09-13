@@ -5,6 +5,8 @@ export const currentPublishedJob = `EXISTS (
   JOIN realm_connections c ON c.id=r.connection_id
   WHERE w.id=download_jobs.world_slot_id AND w.published=1
     AND w.association_status='verified' AND w.source_identity IS NOT NULL
+    AND (download_jobs.selector_kind='latest' OR w.publication_scope='all_archives')
+    AND (download_jobs.selector_kind!='latest' OR w.source_identity=download_jobs.association_evidence)
     AND w.publication_version=download_jobs.publication_version
     AND w.connection_generation=download_jobs.connection_generation
     AND r.connection_generation=c.generation AND w.connection_generation=c.generation

@@ -5,6 +5,7 @@ import { startConnection, stepConnection, readConnectionState } from "@/lib/real
 import { refreshWorlds } from "@/lib/realms/world-service";
 import { setPublication } from "@/lib/realms/publication-service";
 import { inspectStoredWorldAssociation } from "@/lib/realms/association-inspection";
+import { publishLatestWorld } from "@/lib/realms/latest-publication-service";
 import { verificationArchives, createVerificationDownload, stepVerificationDownload, verificationStatus, redeemVerificationDownload } from "@/lib/downloads/verification-service";
 import { AppError, errorResponse, jsonResponse, safeHeaders } from "@/lib/security/errors";
 import { readJson, readForm, objectInput } from "@/lib/security/request-policy";
@@ -70,7 +71,7 @@ export async function POST(request: Request, context: RouteContext) {
     await adminRequest(request, { write: true });
     const allowedKeys = operation === "connection-start" || operation === "disconnect" ? []
       : ["connection-step", "connection-cancel"].includes(operation) ? ["attemptId"]
-      : operation === "publication" ? ["worldId", "published", "expectedVersion", "acknowledgeAllArchives"]
+      : operation === "publication" ? ["worldId", "published", "expectedVersion", "acknowledgeLatest"]
       : operation === "downloads" ? ["worldId", "selection"] : ["jobId"];
     const input = objectInput(await readJson(request), allowedKeys);
     const env = bindings(); const { db, context: admin } = initial;
@@ -83,8 +84,13 @@ export async function POST(request: Request, context: RouteContext) {
     }
     if (operation === "disconnect") { const current = await connection(db, Date.now()); await disconnect(db, current.generation, Date.now()); return new Response(null, { status: 204, headers: safeHeaders }); }
     if (operation === "publication") {
-      if (typeof input.published !== "boolean" || typeof input.expectedVersion !== "number" || (input.acknowledgeAllArchives !== undefined && typeof input.acknowledgeAllArchives !== "boolean")) throw new AppError("invalid_request");
-      return jsonResponse(await setPublication(db, id(input.worldId), input.published, input.expectedVersion, input.acknowledgeAllArchives === true, Date.now()));
+      if (typeof input.published !== "boolean" || typeof input.expectedVersion !== "number" || (input.acknowledgeLatest !== undefined && typeof input.acknowledgeLatest !== "boolean")) throw new AppError("invalid_request");
+      if (input.published) {
+        const rate = await consumeLimits(db, await sourceDigest(request, env.RATE_LIMIT_HMAC_KEY), "create", Date.now());
+        if (!rate.allowed) throw new AppError("rate_limited", 429, rate.retryAfterSeconds);
+        return jsonResponse(await publishLatestWorld(env, id(input.worldId), input.expectedVersion, input.acknowledgeLatest === true));
+      }
+      return jsonResponse(await setPublication(db, id(input.worldId), false, input.expectedVersion, false, Date.now()));
     }
     if (operation === "downloads") {
       const selected = selection(input.selection);

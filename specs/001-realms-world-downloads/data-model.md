@@ -105,14 +105,15 @@ stage 為 requesting_code／waiting_for_user／exchanging_tokens。尚未取得�
 | id／public_id | 內部主鍵與隨機公開 ID；公開 ID 不包含帳號或 Realm ID |
 | realm_id／source_slot_id | 組合唯一，關聯 Realm 及欄位 |
 | connection_generation | 對應目前連線 |
-| source_identity | 可靠的官方內容辨識投影；無法確認為 null |
+| source_identity | latest 模式為已驗證的欄位路由 latest-slot-v1:{realmId}:{slotId}；不是不可變內容 ID 或歷史歸屬證據，未核對為 null |
 | association_status | verified、empty、unverifiable、unavailable |
 | display_name／description | 純文字 1～100／0～2000 碼點，不改官方資料 |
 | published | 預設 false |
+| publication_scope | latest／all_archives；預設 latest，目前發布服務只寫 latest |
 | publication_version | 發布、下架或歸屬失效時遞增；顯示文字修改不影響 |
 | fetched_at／updated_at | 來源取得及設定更新時間 |
 
-目前連線 connected、擁有權正確、欄位 verified 且非空才可發布。發布涵蓋未來可用存檔。欄位被替換或無法再確認歸屬時停止提供並下架，等待管理員重新確認，不沿用舊票。重新授權可保留顯示文字，但全部欄位仍未發布。
+目前連線 connected、擁有權正確、欄位存在且非空，並完成官方 latest 描述及來源主機核對後才可發布。最新模式涵蓋該欄位目前及之後的最新內容，包括遊戲中替換後的新內容；欄位消失、Realm 不可用或擁有權失效時下架，不沿用舊票。重新授權可保留顯示文字，但全部欄位仍未發布。
 
 ### 存檔投影
 
@@ -182,3 +183,6 @@ maintenance_state 保存清理 owner／expires_at，每分鐘至多一批、每�
 每批總共最多異動 500 筆資料列，依外鍵順序先刪超過 30 天的 download_attempts，再刪相應票據與工作；可分批留下暫時無觀察的到期工作，不得先刪仍有期限內紀錄的父列。30 天內即使準備期限已過，仍保留串流觀察列；超過 30 天則停止查閱並允許清理，即使最後階段仍為 streaming。此時既有串流繼續傳輸，晚到終態只能更新仍在期限內的既有列，不能重新插入已清理紀錄或推定失敗。
 
 索引包含 session 到期／管理員版本、授權工作到期、Realm／欄位唯一鍵、發布與世代、工作準備到期／status_expires_at／狀態、票據摘要／到期、紀錄時間／世界、限流到期。D1 平台備份與應用程式可查閱期限不同，不宣稱刪除活動列會清除平台全部備份。
+
+
+2026-09-14 新增 publication_scope 使用單一 ALTER TABLE ADD COLUMN 前向遷移，既有資料預設 latest，不重建或刪除資料表。建立工作及每個最後權限判斷均檢查範圍；latest 工作另比對 source_identity 與 association_evidence。

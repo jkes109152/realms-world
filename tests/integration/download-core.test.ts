@@ -5,8 +5,54 @@ import { setPublication } from "@/lib/realms/publication-service";
 import { invalidateMissingSlots } from "@/lib/realms/world-service";
 import { connection, claimRefresh, saveRefresh, disconnect } from "@/lib/db/connections";
 import { finishTransfer, recentDownloadAttempt } from "@/lib/audit/writer";
+import { publishLatestWorld } from "@/lib/realms/latest-publication-service";
+import { seal } from "@/lib/security/crypto-box";
+import { fetchSequence } from "../fixtures/streams";
 
 const now = Date.UTC(2026, 8, 14);
+
+async function latestFixture() {
+  const keyring = { fixture: "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=" };
+  const authorization = { ownerXuid: "fixture-owner", userHash: "fixture", xstsToken: "fixture-token", expiresAt: now + 3600000 };
+  const box = await seal({ status: "authorized", authorization }, { purpose: "connection", connectionId: 1, generation: 1 }, keyring, "fixture");
+  await env.DB.batch([
+    env.DB.prepare("INSERT INTO realm_connections(id,generation,status,owner_xuid,credential_box,updated_at) VALUES(1,1,'connected','fixture-owner',?,?)").bind(box, now),
+    env.DB.prepare("INSERT INTO realms(id,source_realm_id,connection_id,connection_generation,verified_owner_xuid,source_name,availability,fetched_at) VALUES(1,'7001',1,1,'fixture-owner','人工 Realm','available',?)").bind(now),
+    env.DB.prepare("INSERT INTO world_slots(id,public_id,realm_id,source_slot_id,connection_generation,display_name,fetched_at,updated_at) VALUES(1,'fixture-world',1,'3',1,'人工最新世界',?,?)").bind(now, now),
+  ]);
+  const runtime = { ...env, AUTH_ACTIVE_KEY_ID: "fixture", AUTH_KEYRING: JSON.stringify(keyring), REALMS_CLIENT_VERSION: "1.26.45", REALMS_DOWNLOAD_HOSTS: '["download.example.test"]' };
+  return runtime;
+}
+
+it("只發布最新存檔不查歷史，固定欄位來源核對後發布，歷史工作仍拒絕", async () => {
+  const runtime = await latestFixture();
+  const { fetcher, requests } = fetchSequence([
+    Response.json({ id: "7001", ownerUUID: "fixture-owner", state: "OPEN", expired: false, slots: [{ slotId: 3, options: '{"slotName":"人工最新世界"}' }] }),
+    Response.json({ downloadUrl: "https://download.example.test/world", size: 1024 }),
+  ]);
+  expect(await publishLatestWorld(runtime, "fixture-world", 0, true, { now: () => now, fetcher })).toMatchObject({ published: true, publicationScope: "latest" });
+  expect(requests.map((r) => new URL(r.url).pathname)).toEqual(["/worlds/7001", "/archive/download/world/7001/3/latest"]);
+  const latest = await createJob(env.DB, { worldPublicId: "fixture-world", kind: "latest", sourceBackupId: null, associationEvidence: "latest-slot-v1:7001:3", archiveLabel: "latest" }, now);
+  expect(latest.state).toBe("preparing");
+  await expect(createJob(env.DB, { worldPublicId: "fixture-world", kind: "backup", sourceBackupId: "private-old-id", associationEvidence: "fixture", archiveLabel: "backup" }, now)).rejects.toMatchObject({ code: "not_found" });
+});
+
+it.each([
+  { label: "擁有者不符", owner: "another-owner", host: "download.example.test", code: "forbidden", calls: 1 },
+  { label: "未驗證下載主機", owner: "fixture-owner", host: "unknown.example.test", code: "source_not_configured", calls: 2 },
+  { label: "官方尚在準備", owner: "fixture-owner", host: "download.example.test", code: "world_preparing", calls: 2 },
+])("$label 時保持私有，不建立工作或票據", async ({owner, host, code, calls}) => {
+  const runtime = await latestFixture();
+  const { fetcher, requests } = fetchSequence([
+    Response.json({ id: "7001", ownerUUID: owner, state: "OPEN", expired: false, slots: [{ slotId: 3, options: '{}' }] }),
+    code === "world_preparing" ? Response.json({}, { status: 202 }) : Response.json({ downloadUrl: `https://${host}/world` }),
+  ]);
+  await expect(publishLatestWorld(runtime, "fixture-world", 0, true, { now: () => now, fetcher })).rejects.toMatchObject({ code });
+  expect(requests).toHaveLength(calls);
+  expect(await env.DB.prepare("SELECT published,source_identity,publication_scope FROM world_slots").first()).toEqual({ published: 0, source_identity: null, publication_scope: "latest" });
+  expect((await env.DB.prepare("SELECT count(*) n FROM download_jobs").first<{n:number}>())?.n).toBe(0);
+  expect((await env.DB.prepare("SELECT count(*) n FROM download_tickets").first<{n:number}>())?.n).toBe(0);
+});
 async function fixture() {
   await env.DB.batch([
     env.DB.prepare("INSERT INTO realm_connections(id,generation,status,owner_xuid,updated_at) VALUES(1,1,'connected','fixture-owner',?)").bind(now),

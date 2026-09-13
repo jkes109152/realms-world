@@ -48,9 +48,9 @@
 
 **來源**：[授權流程](https://github.com/PrismarineJS/prismarine-auth/blob/b795199dc5fa26059655bb1bc91c7f7f2733b232/src/MicrosoftAuthFlow.js)、[Live token](https://github.com/PrismarineJS/prismarine-auth/blob/b795199dc5fa26059655bb1bc91c7f7f2733b232/src/TokenManagers/LiveTokenManager.js)、[Xbox 簽章](https://github.com/PrismarineJS/prismarine-auth/blob/b795199dc5fa26059655bb1bc91c7f7f2733b232/src/TokenManagers/XboxTokenManager.js)、[Microsoft 裝置碼說明](https://learn.microsoft.com/en-us/entra/identity-platform/v2-oauth2-device-code)、[Realms 授權格式](https://github.com/PrismarineJS/prismarine-realms/blob/39787ccf0109e0135c8968b0d0e81f4ebbeac200/src/util.js)。
 
-## 4. 歷史存檔的欄位歸屬是必要實測門檻
+## 4. 最新與歷史分開核對歸屬
 
-**決策**：只公開經轉接器可靠確認歸屬的資料。不能確認時回傳 `slot_unverifiable`，阻止發布或新下載；不得把 Realm 級歷史列表複製至所有欄位，也不得為查詢自行切換作用中欄位。
+**決策**：只公開經轉接器可靠確認歸屬的資料。不能確認所選範圍時回傳 `slot_unverifiable`，阻止該範圍發布或新下載；不得把 Realm 級歷史列表複製至所有欄位，也不得為查詢自行切換作用中欄位。
 
 **研究結果**：
 
@@ -64,7 +64,7 @@
 
 `getRealmBackups(realmId, slotId)` 的 HTTP 請求沒有傳送 slotId；slotId 只是附加在本機物件。因此方法簽名不能作為欄位隔離證據。最新端點雖描述目前世界，本產品仍只承諾官方當時可下載者，不宣稱涵蓋未儲存進度。
 
-**替代方案**：只支援作用中欄位、取消歷史下載、以顯示名稱推測擁有者或歸屬，均會改變已確認需求，不採用。
+**範圍修訂**：2026-09-14 使用者明確要求只發布最新，故歷史改為後續獨立能力。最新使用已核對的欄位路由，不要求歷史清單；不得以顯示名稱、seed 或作用中欄位推測歷史歸屬。
 
 **來源**：[列表方法](https://github.com/PrismarineJS/prismarine-realms/blob/39787ccf0109e0135c8968b0d0e81f4ebbeac200/src/index.js)、[基岩版端點](https://github.com/PrismarineJS/prismarine-realms/blob/39787ccf0109e0135c8968b0d0e81f4ebbeac200/src/bedrock/api.js)、[下載實作](https://github.com/PrismarineJS/prismarine-realms/blob/39787ccf0109e0135c8968b0d0e81f4ebbeac200/src/structures/Download.js)、[官方備份說明](https://help.minecraft.net/hc/en-us/articles/28717462139149)。
 
@@ -116,4 +116,9 @@ PBKDF2 的限制及本機覆寫差異來自 [workerd 限制程式碼](https://gi
 4. 最新及不同歷史檔案下載正確；至少一份在基岩版成功匯入，記錄內容辨識與實際最大世界大小。
 5. 實測下載來源主機、重新導向、Client-Version、上游錯誤／準備狀態與 Sites 配額。
 
-任何必要能力失敗都阻止進入完整產品實作及發布。須留下可重現證據，回到規格或方案決策，不自行改託管、不取消歷史下載、不降低欄位歸屬要求。驗收證據格式見[快速開始](quickstart.md)。
+任何必要能力失敗都阻止進入完整產品實作及發布。須留下可重現證據，回到規格或方案決策，不自行改託管或降低所選範圍的欄位歸屬要求；歷史依使用者新指示分開驗證。驗收證據格式見[快速開始](quickstart.md)。
+
+
+## 2026-09-14 最新存檔範圍澄清
+
+使用者明確指定只發布最新存檔。依憲章 v3.0.0，本次發布範圍固定為 latest，包含所選欄位目前及之後官方提供的最新內容；不包含歷史備份。歷史功能與其實測仍保留為後續獨立能力，不能自動公開，也不再阻擋最新的發布與下載驗證。正式開放仍須完成適用於最新範圍的真實授權、續期、欄位、串流、匯入及安全驗收。歷史驗收未執行不等於完成；相關任務保留未勾選。
