@@ -1,50 +1,76 @@
-# [PROJECT_NAME] Constitution
-<!-- Example: Spec Constitution, TaskFlow Constitution, etc. -->
+# Realms World Constitution
 
 ## Core Principles
 
-### [PRINCIPLE_1_NAME]
-<!-- Example: I. Library-First -->
-[PRINCIPLE_1_DESCRIPTION]
-<!-- Example: Every feature starts as a standalone library; Libraries must be self-contained, independently testable, documented; Clear purpose required - no organizational-only libraries -->
+### I. 規格驅動與需求可追溯
 
-### [PRINCIPLE_2_NAME]
-<!-- Example: II. CLI Interface -->
-[PRINCIPLE_2_DESCRIPTION]
-<!-- Example: Every library exposes functionality via CLI; Text in/out protocol: stdin/args → stdout, errors → stderr; Support JSON + human-readable formats -->
+功能開發 MUST 以功能規格、技術計畫與任務清單為依據，依序描述使用者需要什麼、
+如何實作及如何驗收。影響使用者的能力 MUST 對應可驗收的需求與情境。
+文件 MUST 區分已確認需求、合理預設與待實測的相容性，不得把尚未驗證的串接當成可用功能。
+變更範圍時 MUST 同步更新受影響的規格與驗收條件。
 
-### [PRINCIPLE_3_NAME]
-<!-- Example: III. Test-First (NON-NEGOTIABLE) -->
-[PRINCIPLE_3_DESCRIPTION]
-<!-- Example: TDD mandatory: Tests written → User approved → Tests fail → Then implement; Red-Green-Refactor cycle strictly enforced -->
+### II. 擁有者授權與公開範圍隔離
 
-### [PRINCIPLE_4_NAME]
-<!-- Example: IV. Integration Testing -->
-[PRINCIPLE_4_DESCRIPTION]
-<!-- Example: Focus areas requiring integration tests: New library contract tests, Contract changes, Inter-service communication, Shared schemas -->
+網站 MUST 僅使用管理員已授權的 Realms 擁有者帳號；網站管理員身分不得被當作額外遊戲權限。
+每個世界欄位 MUST 預設不公開，只有管理員明確開放後才能讓匿名訪客查看與下載。
+公開範圍 MUST 包含該欄位的最新及官方仍可取得的歷史存檔，不得混入其他欄位或未公開世界。
+每次管理操作及新下載請求 MUST 在後端檢查對應權限與發布狀態，不能只依賴畫面隱藏控制項。
 
-### [PRINCIPLE_5_NAME]
-<!-- Example: V. Observability, VI. Versioning & Breaking Changes, VII. Simplicity -->
-[PRINCIPLE_5_DESCRIPTION]
-<!-- Example: Text I/O ensures debuggability; Structured logging required; Or: MAJOR.MINOR.BUILD format; Or: Start simple, YAGNI principles -->
+### III. 憑證保護與可解除的連線
 
-## [SECTION_2_NAME]
-<!-- Example: Additional Constraints, Security Requirements, Performance Standards, etc. -->
+網站 MUST 使用管理員自訂的網站帳號密碼；Microsoft 授權 MUST 在其提供的授權頁面完成。
+網站不得索取 Microsoft 密碼。網站密碼 MUST 以適合密碼儲存的不可逆雜湊保存；
+需要重用的 Microsoft 授權資料 MUST 在後端加密保存，且加密金鑰與資料分開管理。
+原始密碼、授權權杖與其他秘密不得進入公開頁面、公開回應、一般日誌或 Git 歷史。
+解除連線 MUST 刪除網站持有的該連線授權資料並拒絕新的下載；重新授權不得自動重新發布世界。
 
-[SECTION_2_CONTENT]
-<!-- Example: Technology stack requirements, compliance standards, deployment policies, etc. -->
+### IV. 依官方來源提供下載、如實呈現結果
 
-## [SECTION_3_NAME]
-<!-- Example: Development Workflow, Review Process, Quality Gates, etc. -->
+第一版 MUST 以手動下載為核心，世界檔案只能在傳輸期間經過網站，不能形成可再次下載的持久副本。
+大型世界 MUST 使用串流傳輸，禁止先把完整檔案放入應用程式或瀏覽器記憶體後才提供下載。
+「最新」MUST 指官方當時提供的最新可下載存檔，不得宣稱是未儲存的遊戲即時狀態。
+官方移除存檔、權限失效或服務中斷時 MUST 明確呈現不可用狀態。
+請求下載、伺服器傳輸結束與已確認的傳輸失敗 MUST 分別記錄；
+無法確認結果時 MUST 保留未知狀態，不得宣稱使用者已儲存檔案或成功匯入遊戲。
 
-[SECTION_3_CONTENT]
-<!-- Example: Code review requirements, testing gates, deployment approval process, etc. -->
+### V. 實際環境驗證與可重現發布
+
+正式上線前 MUST 在 Sites 執行環境驗證 Microsoft 授權、續期、Realm 擁有者識別、
+世界欄位與存檔對應，以及實際世界檔下載。
+權限隔離、授權生命週期、下載失敗與大型檔案傳輸 MUST 有對應測試；
+模擬資料不得取代真實 Realms 串接及至少一次基岩版匯入驗證。
+發布內容 MUST 可追溯到已保存的 Git 提交，檢查結果 MUST 區分通過、失敗與尚未執行。
+遇到 Sites 的必要能力限制時 MUST 記錄實測證據並回報，不得自行增加外部主機或刪除核心需求。
+
+## 專案約束
+
+- 第一版為單一最高管理員與匿名下載訪客；最高權限指管理本網站及其已授權的 Realms 下載範圍。
+- 網站 MUST 部署於 Sites，正式網域為 `realms.jkesbyebye.com`，DNS 由 Bluehost 管理。
+- Git MUST 根植於此專案資料夾，主要遠端為 `https://github.com/jkes109152/realms-world`；
+  功能分支使用 `codex/` 前綴，不能提交或修改其他上層專案。
+- 網站 MUST 提供繁體中文介面，支援手機與電腦，時間以台灣時區顯示。
+- 第一版不包含公開註冊、多管理員、世界檔案持久儲存、定時備份、上傳替換、還原、
+  Realm 開關或成員管理；新增這些能力前 MUST 更新功能規格。
+- 管理員初始建立及忘記密碼重設 MUST 走受保護的維護流程，不提供匿名的管理員註冊入口。
+- Sites 登入不得取代已選定的自製管理員帳號系統；匿名下載入口不得要求 ChatGPT 登入。
+
+## 開發流程與品質門檻
+
+1. 完成憲章與功能規格；有會改變範圍的疑義時先澄清，再進入技術規劃。
+2. 技術計畫 MUST 記錄選型、外部依賴、資料生命週期及權限邊界，並完成 Constitution Check。
+3. 任務清單 MUST 將 Sites／Realms 可行性驗證排在完整產品實作之前，且包含規格要求的驗收工作。
+4. 實作前 MUST 檢查規格、計畫與任務一致性；實作後 MUST 檢查未完成項目並保留證據。
+5. 匿名存取、管理員權限、真實下載、錯誤處理與秘密不外洩均經驗證後，才能開放正式下載。
+6. 下游流程讀取本憲章；不得為了繞過品質門檻而改寫模板或將未完成項目標示完成。
 
 ## Governance
-<!-- Example: Constitution supersedes all other practices; Amendments require documentation, approval, migration plan -->
 
-[GOVERNANCE_RULES]
-<!-- Example: All PRs/reviews must verify compliance; Complexity must be justified; Use [GUIDANCE_FILE] for runtime development guidance -->
+本憲章自 2026-09-13 首次採用。規格、技術計畫、任務與發布審查 MUST 檢查上述原則。
+使用者在目前工作中的明確指示優先；若指示改變既有原則，MUST 同步記錄影響並修訂相關文件，
+不能以本憲章要求使用者重複批准已授權的工作。
 
-**Version**: [CONSTITUTION_VERSION] | **Ratified**: [RATIFICATION_DATE] | **Last Amended**: [LAST_AMENDED_DATE]
-<!-- Example: Version: 2.1.1 | Ratified: 2025-06-13 | Last Amended: 2025-07-16 -->
+憲章採語意化版本：不相容的原則變更升 MAJOR，新增或擴充治理要求升 MINOR，
+文字澄清且不改變要求升 PATCH。每次修訂 MUST 更新版本、日期與理由，並檢查下游文件影響。
+尚未符合原則的項目 MUST 明確記錄，不得用測試未執行或工具不可用推定為通過。
+
+**Version**: 1.0.0 | **Ratified**: 2026-09-13 | **Last Amended**: 2026-09-13

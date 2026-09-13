@@ -25,13 +25,36 @@
 
 1. `$speckit-constitution`：制定專案原則。
 2. `$speckit-specify`：描述要開發的功能與需求。
-3. `$speckit-plan`：建立技術實作計畫。
-4. `$speckit-tasks`：拆解工作。
-5. `$speckit-implement`：依任務實作。
-6. `$speckit-converge`：檢查實作與規格是否一致。
+3. `$speckit-clarify`：有重要需求疑義時釐清，已明確的決策不重複詢問。
+4. `$speckit-plan`：建立技術實作計畫。
+5. `$speckit-tasks`：拆解工作。
+6. `$speckit-analyze`：實作前檢查規格、計畫與任務的一致性。
+7. `$speckit-implement`：依任務實作。
+8. `$speckit-converge`：檢查實作與規格是否一致。
 
-亦可使用 `$speckit-clarify`、`$speckit-analyze`、`$speckit-checklist`。
-目前只完成工具初始化，專案原則仍為待填寫模板，尚未建立功能規格。
+需要額外需求品質檢查時可使用 `$speckit-checklist`。
+
+## 目前 SDD 狀態（2026-09-13）
+
+- 已完成[專案憲章 v1.0.0](.specify/memory/constitution.md)，為首次正式採用。
+- 目前功能：[Realms World 公開世界下載站](specs/001-realms-world-downloads/spec.md)。
+- 功能目錄：`specs/001-realms-world-downloads/`。
+- Git 功能分支：`codex/001-realms-world-downloads`。
+- [需求品質檢查](specs/001-realms-world-downloads/checklists/requirements.md)共 16 項通過；
+  這是規格審查結果，不代表程式或 Realms 串接已完成。
+- [技術規劃交接](specs/001-realms-world-downloads/planning-input.md)保存 Sites、自訂網域、
+  Git、授權與下載限制等已確認的規劃輸入，不取代後續 `plan.md`。
+- 下一步為 `$speckit-plan`；尚未建立應用程式、`plan.md` 或 `tasks.md`，尚未部署網站。
+
+`.specify/feature.json` 保存目前功能目錄，屬忽略追蹤的本機狀態。
+新的 checkout 若沒有該檔案，可在執行下游命令的 PowerShell 工作階段明確設定：
+
+```powershell
+$env:SPECIFY_FEATURE_DIRECTORY = Join-Path (Get-Location) 'specs/001-realms-world-downloads'
+$env:SPECIFY_FEATURE = '001-realms-world-downloads'
+```
+
+Spec Kit 功能名稱與 Git 分支名稱獨立；技術計畫的分支欄位應記錄實際 Git 分支。
 
 ## 重建本機工具環境
 
