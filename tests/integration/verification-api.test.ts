@@ -3,7 +3,8 @@ import { expect, it } from "vitest";
 import { GET, POST } from "@/app/api/admin/verification/[operation]/route";
 import { createSession } from "@/lib/auth/session";
 import { requireSession } from "@/lib/auth/session";
-import { startConnection } from "@/lib/realms/connection-service";
+import { startConnection, readConnectionState, stepConnection } from "@/lib/realms/connection-service";
+import { disconnect } from "@/lib/db/connections";
 
 const now = () => Date.now();
 const origin = "https://realms.example.test";
@@ -54,4 +55,25 @@ it("已登入的管理員可建立尚未對外請求的授權工作", async () =
   expect(started.stage).toBe("requesting_code");
   expect(started.userCode).toBeNull();
   expect((await env.DB.prepare("SELECT status FROM realm_connections WHERE id=1").first())?.status).toBe("authorizing");
+});
+
+it("重開頁面可找回本 session 的授權工作，其他 session 不能取得其 challenge", async () => {
+  const session = await admin();
+  const adminContext = await requireSession(env.DB, session.token, Date.now());
+  const runtime = { ...env, AUTH_ACTIVE_KEY_ID: "fixture", AUTH_KEYRING: JSON.stringify({ fixture: "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=" }) };
+  const started = await startConnection(runtime, adminContext);
+  const resumed = await readConnectionState(runtime, adminContext);
+  expect(resumed).toMatchObject({ state: "authorizing", pendingAttempt: { attemptId: started.attemptId, state: "pending", stage: "requesting_code" } });
+  const time = Date.now();
+  await stepConnection(runtime, adminContext, started.attemptId, { now: () => time, fetcher: (async () => Response.json({
+    device_code: "private-device-secret", user_code: "USER-CODE", verification_uri: "https://microsoft.com/link", expires_in: 900, interval: 5,
+  })) as typeof fetch });
+  const challenge = await readConnectionState(runtime, adminContext, time);
+  expect(challenge.pendingAttempt).toMatchObject({ stage: "waiting_for_user", userCode: "USER-CODE", verificationUri: "https://microsoft.com/link", retryAfterSeconds: 5 });
+  expect(JSON.stringify(challenge)).not.toMatch(/encrypted_state|deviceCode|private-device-secret|refreshToken|credential_box/);
+  const other = await createSession(env.DB, 1, Date.now());
+  expect(await readConnectionState(runtime, await requireSession(env.DB, other.token, Date.now()))).toMatchObject({ state: "authorizing", pendingAttempt: null });
+  expect((await readConnectionState(runtime, adminContext, time + 900000)).pendingAttempt).toMatchObject({ userCode: null, verificationUri: null, retryAfterSeconds: 0 });
+  await disconnect(env.DB, challenge.generation, time);
+  expect(await readConnectionState(runtime, adminContext, time)).toMatchObject({ state: "disconnected", pendingAttempt: null });
 });

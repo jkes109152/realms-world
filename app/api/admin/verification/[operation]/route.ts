@@ -1,7 +1,7 @@
 import { adminRequest } from "@/lib/auth/http";
 import { bindings } from "@/lib/db/client";
 import { connection, disconnect } from "@/lib/db/connections";
-import { startConnection, stepConnection } from "@/lib/realms/connection-service";
+import { startConnection, stepConnection, readConnectionState } from "@/lib/realms/connection-service";
 import { refreshWorlds } from "@/lib/realms/world-service";
 import { setPublication } from "@/lib/realms/publication-service";
 import { verificationArchives, createVerificationDownload, stepVerificationDownload, verificationStatus, redeemVerificationDownload } from "@/lib/downloads/verification-service";
@@ -35,14 +35,11 @@ function selection(value: unknown): Selection {
 
 export async function GET(request: Request, context: RouteContext) {
   try {
-    const { db } = await adminRequest(request);
+    const { db, context: admin } = await adminRequest(request);
     const { operation } = await context.params; operationAllowed(operation, "GET");
     const params = new URL(request.url).searchParams;
     if ([...params.keys()].some((key) => !(operation === "archives" ? ["worldId"] : operation === "download-status" ? ["jobId"] : []).includes(key))) throw new AppError("invalid_request");
-    if (operation === "connection") {
-      const current = await connection(db, Date.now());
-      return jsonResponse({ state: current.status, generation: current.generation, lastVerifiedAt: current.last_verified_at === null ? null : new Date(current.last_verified_at).toISOString(), error: current.last_error_code });
-    }
+    if (operation === "connection") return jsonResponse(await readConnectionState(bindings(), admin));
     if (operation === "worlds") return jsonResponse({ items: (await refreshWorlds(bindings())).results });
     if (operation === "archives") {
       const archives = await verificationArchives(bindings(), id(params.get("worldId")));

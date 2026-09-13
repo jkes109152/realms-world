@@ -122,6 +122,8 @@ G0 共用核心階段即提供最小發布／下架服務；後續 US3 延伸同
 
 POST 的 connection-start／disconnect 使用空物件；connection-step／connection-cancel 使用 `{attemptId}`。publication 使用 `{worldId,published,expectedVersion,acknowledgeAllArchives?}`，發布條件與正式發布 API 完全相同。downloads 使用 `{worldId,selection}`；download-step 使用 `{jobId}` 與 capability。這些操作的成功資料、錯誤及頻率規則沿用對應正式契約，connection-cancel／disconnect 回 204。未知 operation 回 404，白名單但方法錯誤回 405。
 
+GET connection 附加 `pendingAttempt`：僅目前有效 session、credential_version 與連線 generation 同時符合建立者時，回傳既有授權工作的安全投影（attemptId、state、stage、userCode、verificationUri、expiresAt、retryAfterSeconds）；其餘情況為 null。重新載入頁面可接續分次 step，遵守既有輪詢時間與租約；過期代碼不再顯示，由下一次受保護 step 結束工作。不回傳裝置秘密、加密狀態或 token，也不移轉其他 session 的授權。
+
 每次驗證請求都要求有效自製管理員 session；所有 POST 要求精確 Origin 與 CSRF。redeem 使用原生表單 `{ticket,csrfToken}`，以 csrfToken 欄位驗證 session 的 CSRF 摘要，其餘 POST 使用 X-CSRF-Token。此表單不使用 JSON；附件、錯誤 HTML 與大小限制沿用正式兌換。DOWNLOADS_ENABLED=false 只在上述伺服器已驗證的管理員路由中可略過；建立、step、status、票據消耗及最後開始串流仍檢查已發布、擁有權／歸屬與版本，不允許下載未發布欄位。
 
 G0 時 Sites 外層保持受保護，公開路由保持停用；測試包含未登入、失效 session、CSRF、未發布欄位、舊票與錯誤方法的拒絕。每次驗證結束或中止前明確下架此次選取的欄位以推進版本；若中途失聯，下次先完成下架再繼續。正式啟用總開關前須核對無遺留驗收發布，重新由管理員選取正式範圍。

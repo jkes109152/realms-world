@@ -10,6 +10,30 @@ function projection(id: string, state: DeviceState, now: number) {
     expiresAt: new Date(state.expiresAt).toISOString(), retryAfterSeconds: Math.max(0, Math.ceil((state.nextPollAt - now) / 1000)) };
 }
 
+export async function readConnectionState(env: AppEnv, admin: AdminContext, now = Date.now()) {
+  const current = await connection(env.DB, now);
+  const attempt = current.status === "authorizing" ? await env.DB.prepare(`SELECT a.* FROM auth_attempts a
+    JOIN realm_connections c ON c.id=1 AND c.generation=a.connection_generation AND c.status='authorizing'
+    JOIN admin_sessions s ON s.token_digest=a.admin_session_digest AND s.credential_version=a.credential_version
+    JOIN admin_accounts account ON account.id=s.admin_id AND account.credential_version=s.credential_version
+    WHERE a.connection_generation=? AND a.admin_session_digest=? AND a.credential_version=? AND a.status='pending'
+    AND s.expires_at>? AND s.last_seen_at>? LIMIT 1`)
+    .bind(current.generation, admin.tokenDigest, admin.credentialVersion, now, now - 1800000).first<AttemptRow>() : null;
+  let pendingAttempt: ReturnType<typeof projection> | null = null;
+  if (attempt?.encrypted_state) {
+    const state = await unseal<DeviceState>(attempt.encrypted_state,
+      { purpose: "device-attempt", connectionId: 1, generation: attempt.connection_generation }, readKeyring(env.AUTH_KEYRING));
+    // 已到期的工作仍交由下一次受保護的 step 結束，但不再顯示無效代碼。
+    pendingAttempt = projection(attempt.id, { ...state,
+      ...(attempt.expires_at <= now ? { userCode: undefined, verificationUri: undefined } : {}),
+      nextPollAt: attempt.expires_at <= now ? now : Math.max(attempt.next_poll_at, attempt.poll_until ?? 0),
+    }, now);
+  }
+  return { state: current.status, generation: current.generation,
+    lastVerifiedAt: current.last_verified_at === null ? null : new Date(current.last_verified_at).toISOString(),
+    error: current.last_error_code, pendingAttempt };
+}
+
 export async function startConnection(env: AppEnv, admin: AdminContext, now = Date.now()) {
   const current = await connection(env.DB, now);
   if (current.status !== "disconnected") throw new AppError("conflict", 409);
