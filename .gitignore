@@ -1,0 +1,3 @@
+# Project-local development tools
+.tools/
+__pycache__/
