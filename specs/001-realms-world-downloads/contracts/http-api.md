@@ -130,6 +130,8 @@ GET connection 附加 `pendingAttempt`：僅目前有效 session、credential_ve
 
 G0 時 Sites 外層保持受保護，公開路由保持停用；測試包含未登入、失效 session、CSRF、未發布欄位、舊票與錯誤方法的拒絕。每次驗證結束或中止前明確下架此次選取的欄位以推進版本；若中途失聯，下次先完成下架再繼續。正式啟用總開關前須核對無遺留驗收發布，重新由管理員選取正式範圍。
 
+GET worlds 需要續期時回 503 authorization_refreshing 及 Retry-After，不把尚未就緒的授權當作世界空清單。管理頁同一次讀取可依此訊號自動接續，最多 12 次請求、120 秒；至少等待 1 秒且不短於伺服器指定間隔，離頁取消。其他錯誤不自動重送，不改變發布或連線世代。此接續機制只涵蓋讀取世界，不自動重建下載或重送發布。
+
 ## 紀錄
 
 GET /api/admin/logs，需 session；參數 `kind`（all／operation／download）、`cursor`、`limit`（1～100，預設 50），可選 worldId。伺服器永遠附加最近 30 天條件，游標不能繞過。

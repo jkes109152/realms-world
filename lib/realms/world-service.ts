@@ -25,7 +25,7 @@ export async function invalidateMissingSlots(db: D1Database, generation: number,
 export async function refreshWorlds(env: AppEnv) {
   const version = clientVersion(env);
   const auth = await getValidRealmsAuthorization(env);
-  if (auth.kind !== "ready") throw new AppError("unavailable", 503, Math.max(1, Math.ceil((auth.nextPollAt - Date.now()) / 1000)));
+  if (auth.kind !== "ready") throw new AppError("authorization_refreshing", 503, Math.max(1, Math.ceil((auth.nextPollAt - Date.now()) / 1000)));
   const owned = await listOwnedRealms(auth.authorization, version, Date.now());
   const present: { realmId: string; slotId: string }[] = [];
   for (const realm of owned) {

@@ -1,11 +1,12 @@
 "use client";
-import { useCallback, useEffect, useState, type FormEvent } from "react";
+import { useCallback, useEffect, useRef, useState, type FormEvent } from "react";
 import { Box, KeyRound, ExternalLink, RefreshCw, Download, ShieldCheck, Unplug } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useVerificationTools } from "@/hooks/use-verification-tools";
+import { continueAuthorizationRefresh, RetryableRequest } from "@/lib/client/auth-refresh-request";
 
 type Session = { username: string; csrfToken: string };
 type Attempt = { attemptId: string; state: string; stage: string; userCode: string | null; verificationUri: string | null; retryAfterSeconds: number };
@@ -14,14 +15,13 @@ type Job = { jobId: string; statusSecret: string; state?: string; stage?: string
 
 const labels: Record<string, string> = { disconnected: "尚未連接", authorizing: "授權進行中", connected: "已連接", reauth_required: "需要重新連接", pending: "等待授權", authorized: "授權完成", cancelled: "已取消", denied: "授權未完成", expired: "已到期", failed: "操作未完成", preparing: "準備世界中", ready: "世界已準備好", redeeming: "正在連接來源", streaming: "伺服器正在傳輸", transfer_ended: "伺服器傳輸結束", transfer_failed: "已確認傳輸失敗", invalidated: "下載已失效", unknown: "結果不明" };
 const endpoint = (operation: string) => `/api/admin/verification/${operation}`;
-class RetryableRequest extends Error { constructor(message: string, public seconds: number) { super(message); } }
 async function api<T>(path: string, options: { body?: unknown; csrf?: string; secret?: string; signal?: AbortSignal } = {}): Promise<T> {
   const response = await fetch(path, { method: options.body === undefined ? "GET" : "POST", cache: "no-store", signal: options.signal,
     headers: { ...(options.body === undefined ? {} : { "Content-Type": "application/json" }), ...(options.csrf ? { "X-CSRF-Token": options.csrf } : {}), ...(options.secret ? { "X-Download-Capability": options.secret } : {}) },
     ...(options.body === undefined ? {} : { body: JSON.stringify(options.body) }) });
   if (response.status === 204) return undefined as T;
   const value = await response.json() as { data: T; error?: { message?: string; code?: string; retryAfterSeconds?: number | null } };
-  if ((response.status === 429 || response.status === 503) && value.error?.code !== "preparation_limit_reached") throw new RetryableRequest(value.error?.message || "請稍候再試。", value.error?.retryAfterSeconds ?? 5);
+  if ((response.status === 429 || response.status === 503) && value.error?.code !== "preparation_limit_reached") throw new RetryableRequest(value.error?.message || "請稍候再試。", value.error?.retryAfterSeconds ?? 5, value.error?.code);
   if (!response.ok) throw new Error(response.status === 401 ? "請登入管理員帳號。" : value.error?.message || "操作暫時無法完成，請稍後再試。");
   return value.data;
 }
@@ -32,6 +32,9 @@ export default function VerificationPage() {
   const [attempt, setAttempt] = useState<Attempt | null>(null), [worlds, setWorlds] = useState<World[]>([]);
   const [acknowledged, setAcknowledged] = useState<Record<string, boolean>>({});
   const [job, setJob] = useState<Job | null>(null), [submitted, setSubmitted] = useState(false);
+  const [progress, setProgress] = useState("");
+  const activeAction = useRef<AbortController | null>(null);
+  useEffect(() => () => activeAction.current?.abort(), []);
 
   useVerificationTools({ signedIn: !!session, connection, loadedWorlds: worlds.length, publishedWorlds: worlds.filter((world) => world.published).length, downloadState: job?.state ?? null });
   const refreshConnection = useCallback(async () => {
@@ -66,7 +69,12 @@ export default function VerificationPage() {
     }, Math.max(2500, (job.retryAfterSeconds ?? 0) * 1000));
     return () => { clearTimeout(timer); abort.abort(); };
   }, [job, session]);
-  async function action(run: () => Promise<void>) { setBusy(true); setError(""); try { await run(); } catch (failure) { setError(failure instanceof Error ? failure.message : "操作暫時無法完成。"); } finally { setBusy(false); } }
+  async function action(run: () => Promise<void>) { setBusy(true); setError(""); try { await run(); } catch (failure) { setError(failure instanceof Error ? failure.message : "操作暫時無法完成。"); } finally { setBusy(false); setProgress(""); } }
+  async function withAuthorizationRefresh<T>(request: (signal: AbortSignal) => Promise<T>) {
+    const abort = new AbortController(); activeAction.current?.abort(); activeAction.current = abort;
+    try { return await continueAuthorizationRefresh(() => request(abort.signal), { signal: abort.signal, onWaiting: () => setProgress("正在更新 Microsoft 連線授權，完成後會自動繼續…") }); }
+    finally { if (activeAction.current === abort) activeAction.current = null; }
+  }
   function login(event: FormEvent<HTMLFormElement>) {
     event.preventDefault(); const form = new FormData(event.currentTarget);
     void action(async () => { setSession(await api<Session>("/api/admin/login", { body: { username: form.get("username"), password: form.get("password") } })); await refreshConnection(); });
@@ -84,6 +92,7 @@ export default function VerificationPage() {
     <header className="rw-header"><a href="/" className="rw-brand"><Box aria-hidden="true" /> REALMS WORLD</a><span className="rw-status">● 管理員驗證</span></header>
     <main className="rw-workspace"><div className="rw-page-heading"><div><p className="rw-kicker">管理員工作區</p><h1>連接你的世界</h1><p className="rw-muted">完成授權與下載驗證，確認世界可以完整抵達。</p></div><div className="rw-private"><ShieldCheck size={18} /> 公開下載關閉</div></div>
       {error && <div className="rw-error" role="alert">{error}</div>}
+      {progress && <div className="rw-panel" role="status">{progress}</div>}
       {checking ? <p role="status" className="rw-panel">正在確認登入狀態…</p> : !session ?
         <section className="rw-login rw-panel"><KeyRound className="rw-icon" /><h2>管理員登入</h2><p className="rw-muted">使用你的網站帳號。Microsoft 授權會在登入後另外進行。</p><form onSubmit={login} className="rw-form"><div><Label htmlFor="username">網站帳號</Label><Input id="username" name="username" autoComplete="username" required maxLength={64} /></div><div><Label htmlFor="password">網站密碼</Label><Input id="password" name="password" type="password" autoComplete="current-password" required /></div><Button type="submit" size="lg" disabled={busy}>{busy ? "登入中…" : "登入驗證入口"}</Button></form><p className="rw-small">此入口僅供已初始化的管理員使用。</p></section> : <>
         <div className="rw-grid"><section className="rw-panel"><div className="rw-section-heading"><span className="rw-number">01</span><h2>Microsoft 連線</h2></div><p className="rw-muted">{session.username}，請連接擁有 Realms 的 Microsoft 帳號。</p><div className="rw-connection-state">{labels[connection] || "狀態未知"}</div>
@@ -91,7 +100,7 @@ export default function VerificationPage() {
           {attempt?.state === "pending" ? <div className="rw-challenge">{attempt.userCode && attempt.verificationUri ? <><p>在 Microsoft 官方頁面輸入這組代碼：</p><strong className="rw-code">{attempt.userCode}</strong><Button asChild size="lg"><a href={attempt.verificationUri} target="_blank" rel="noopener noreferrer">前往 Microsoft 授權 <ExternalLink /></a></Button><p className="rw-small">等待授權完成，頁面會自動更新。</p></> : <p role="status">{attempt.stage === "exchanging_tokens" ? "正在完成安全連接…" : "正在取得授權代碼…"}</p>}<Button variant="ghost" disabled={busy} onClick={() => void action(async () => { await api(endpoint("connection-cancel"), { body: { attemptId: attempt.attemptId }, csrf: session.csrfToken }); setAttempt(null); await refreshConnection(); })}>取消此次授權</Button></div>
           : <div className="rw-actions">{connection === "disconnected" ? <Button size="lg" disabled={busy} onClick={() => void action(async () => { setAttempt(await api<Attempt>(endpoint("connection-start"), { body: {}, csrf: session.csrfToken })); setConnection("authorizing"); })}><KeyRound /> 連接 Microsoft</Button> : <Button variant="outline" disabled={busy} onClick={() => void action(async () => { await api(endpoint("disconnect"), { body: {}, csrf: session.csrfToken }); setWorlds([]); setJob(null); setAttempt(null); await refreshConnection(); })}><Unplug /> 解除連線並下架所有世界</Button>}</div>}</section>
           <aside className="rw-panel rw-guide"><p className="rw-kicker">驗證順序</p><ol><li><strong>連接擁有者帳號</strong><span>僅使用 Microsoft 官方授權頁。</span></li><li><strong>選擇最新存檔</strong><span>發布時核對擁有權、欄位與最新來源。</span></li><li><strong>下載並匯入遊戲</strong><span>核對最新世界的內容。</span></li></ol><p className="rw-small">驗證結束或中止前，請下架此次驗證的世界。</p></aside></div>
-        <section className="rw-panel"><div className="rw-section-heading"><span className="rw-number">02</span><h2>世界與驗證範圍</h2><Button className="ml-auto" variant="outline" disabled={busy || connection !== "connected"} onClick={() => void action(async () => { setWorlds((await api<{items:World[]}>(endpoint("worlds"))).items); })}><RefreshCw /> 讀取世界</Button></div>
+        <section className="rw-panel"><div className="rw-section-heading"><span className="rw-number">02</span><h2>世界與驗證範圍</h2><Button className="ml-auto" variant="outline" disabled={busy || connection !== "connected"} onClick={() => void action(async () => { setProgress("正在讀取世界…"); setWorlds((await withAuthorizationRefresh((signal) => api<{items:World[]}>(endpoint("worlds"), { signal }))).items); })}><RefreshCw /> 讀取世界</Button></div>
           {!worlds.length ? <div className="rw-empty"><Box size={32} /><h3>還沒有讀取世界</h3><p>連接完成後，讀取擁有者帳號中的 Realms 欄位。</p></div> : worlds.map((world) => <article key={world.worldId} className="rw-world"><p className="rw-kicker">{world.realmName} · 欄位 {world.slotId}</p><h3>{world.displayName}</h3><p className="rw-muted">{world.published ? "已發布最新存檔，歷史備份未公開" : world.associationStatus === "unavailable" ? "Realm 目前不可用" : world.associationStatus === "empty" ? "此欄位為空" : "可發布此欄位的最新存檔"}</p>
             {!["empty", "unavailable"].includes(world.associationStatus) && !world.published ? <Label className="rw-check"><Checkbox checked={!!acknowledged[world.worldId]} onCheckedChange={(checked) => setAcknowledged((current) => ({ ...current, [world.worldId]: checked === true }))} />確認只公開此欄位目前與之後的最新存檔；在遊戲中替換此欄位後，也會提供新的內容</Label> : null}
             <div className="rw-actions"><Button disabled={busy || (!world.published && (["empty", "unavailable"].includes(world.associationStatus) || !acknowledged[world.worldId]))} variant={world.published ? "outline" : "default"} onClick={() => publish(world)}>{world.published ? "下架驗證世界" : "發布最新存檔"}</Button>{!!world.published && <Button variant="outline" disabled={busy} onClick={() => download(world.worldId)}><Download /> 準備最新存檔</Button>}</div></article>)}

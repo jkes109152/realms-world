@@ -1,4 +1,5 @@
 const messages: Record<string, string> = {
+  authorization_refreshing: "正在更新 Microsoft 連線授權，完成後會自動繼續…",
   world_preparing: "官方正在準備最新存檔，請稍後再次發布。",
   login_failed: "帳號或密碼不正確。", session_expired: "請重新登入管理介面。", not_available: "世界目前未開放或無法使用。",
   version_conflict: "資料已變更，請重新確認後再操作。", temporarily_unavailable: "目前暫時無法使用，請稍後再試。",

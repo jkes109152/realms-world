@@ -2,7 +2,8 @@ import { env } from "cloudflare:workers";
 import { expect, it } from "vitest";
 import { createJob, claimDownloadStep, readyJob, consumeTicket, beginStreaming, visibleJob } from "@/lib/db/downloads";
 import { setPublication } from "@/lib/realms/publication-service";
-import { invalidateMissingSlots } from "@/lib/realms/world-service";
+import { invalidateMissingSlots, refreshWorlds } from "@/lib/realms/world-service";
+import { errorResponse } from "@/lib/security/errors";
 import { connection, claimRefresh, saveRefresh, disconnect } from "@/lib/db/connections";
 import { finishTransfer, recentDownloadAttempt } from "@/lib/audit/writer";
 import { publishLatestWorld } from "@/lib/realms/latest-publication-service";
@@ -23,6 +24,22 @@ async function latestFixture() {
   const runtime = { ...env, AUTH_ACTIVE_KEY_ID: "fixture", AUTH_KEYRING: JSON.stringify(keyring), REALMS_CLIENT_VERSION: "1.26.45", REALMS_DOWNLOAD_HOSTS: '["download.example.test"]' };
   return runtime;
 }
+
+it("續期等待回傳專用重試訊號，保留已發布世界，不讀取未就緒來源", async () => {
+  const runtime = await latestFixture(); const currentTime = Date.now();
+  const box = await seal({ status: "pending", stage: "exchanging_tokens", expiresAt: currentTime + 600000, nextPollAt: currentTime + 30000, intervalSeconds: 5 },
+    { purpose: "connection", connectionId: 1, generation: 1 }, JSON.parse(runtime.AUTH_KEYRING), "fixture");
+  await env.DB.prepare("UPDATE realm_connections SET credential_box=?").bind(box).run();
+  await env.DB.prepare("UPDATE world_slots SET source_identity='latest-slot-v1:7001:3',association_status='verified'").run();
+  await setPublication(env.DB, "fixture-world", true, 0, true, currentTime);
+  const failure = await refreshWorlds(runtime).then(() => { throw new Error("來源不應就緒"); }, (error) => error);
+  const response = errorResponse(failure);
+  expect(response.status).toBe(503);
+  expect(await response.json()).toMatchObject({ error: { code: "authorization_refreshing" } });
+  expect(Number(response.headers.get("Retry-After"))).toBeGreaterThan(0);
+  expect(await env.DB.prepare("SELECT published,publication_version FROM world_slots").first()).toEqual({ published: 1, publication_version: 1 });
+  expect((await connection(env.DB, currentTime)).generation).toBe(1);
+});
 
 it("只發布最新存檔不查歷史，固定欄位來源核對後發布，歷史工作仍拒絕", async () => {
   const runtime = await latestFixture();
