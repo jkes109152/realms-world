@@ -12,7 +12,9 @@ description: "Realms World 公開世界下載站的可追溯實作與驗收任�
 
 **治理依據**：[專案憲章 v3.0.0](../../.specify/memory/constitution.md)。
 
-**目前狀態**：共 95 項任務，已完成 T001～T023（準備、模型、共用核心與最小驗證入口）；68 項本機測試、型別、ESLint 與建置通過，證據見 [核心驗證](validation/core.md)。T024 已有 [部分真實平台結果](validation/g0-platform.md)，T024～T030 真實 G0 尚未通過。核取標記為目前進度，未勾選項目仍未完成；現有草稿 PR #1 持續用於本功能。
+**目前狀態**：共 95 項任務，已完成 T001～T023（準備、模型、共用核心與最小驗證入口）及 T091（DNS／HTTPS）；68 項本機測試、型別、ESLint 與建置通過，證據見 [核心驗證](validation/core.md)。T024 已有 [部分真實平台結果](validation/g0-platform.md)，T024～T030 真實 G0 尚未通過。核取標記為目前進度，未勾選項目仍未完成；現有草稿 PR #1 持續用於本功能。
+
+**2026-09-15 執行順序調整**：使用者要求現在部署 realms.jkesbyebye.com，且明確選擇所有訪客免登入下載。依此最新指示提前執行部署、DNS 與公開設定；不將尚未匯入、完整 G0、完整故事或 T092 誤勾為完成。下文關閉開關／原定先後順序為原驗收流程，這次例外與實際進度以 [正式網域紀錄](validation/domain.md) 為準。
 
 ## 格式與執行規則
 
@@ -206,7 +208,7 @@ description: "Realms World 公開世界下載站的可追溯實作與驗收任�
 - [ ] T088 在 `.github/workflows/ci.yml` 固定 Node／npm 鎖定安裝、check、單元／D1 整合及 build 必要檢查，具瀏覽器條件時納入 Playwright；執行 quickstart.md 全套必要指令，結果寫入 `specs/001-realms-world-downloads/validation/checks.md`，CI 不使用真實帳號、秘密或大檔持久 fixture。
 - [ ] T089 完成部署前實作一致性／缺漏收斂及憲章檢查，更新 `specs/001-realms-world-downloads/validation/coverage.md`、`specs/001-realms-world-downloads/validation/release.md` 與 `specs/001-realms-world-downloads/tasks.md`；五個故事、G0 及 T080～T088 必要測試均須通過。FR-001 的正式網域部分及 SC-010 的正式入口整合明列待 T091／T092，其他需求及兩者的匿名行為／真實連線／下載／權限／錯誤前置證據須通過，才能標示可部署但未完成正式驗收；不得要求後續正式網域結果作本任務先決條件，也不能將待驗標為通過。
 - [ ] T090 將已驗收程式／遷移／設定保存為完整 Git 提交，透過同一 Sites 保存版本並部署，在 `specs/001-realms-world-downloads/validation/release.md` 記錄 Git／Site 對應及秘密已套用；DOWNLOADS_ENABLED 仍關閉，既有未發布欄位維持不公開，不覆寫 GitHub origin。
-- [ ] T091 透過 Sites 取得 `realms.jkesbyebye.com` 的確切驗證／路由值，在 Bluehost 設定並等待 DNS 與 HTTPS 憑證確認；將實際記錄、狀態與測試時間寫入 `specs/001-realms-world-downloads/validation/domain.md`，禁止猜測目標或把等待狀態當完成。
+- [x] T091 透過 Sites 取得 `realms.jkesbyebye.com` 的確切驗證／路由值，在 Bluehost 設定並等待 DNS 與 HTTPS 憑證確認；將實際記錄、狀態與測試時間寫入 `specs/001-realms-world-downloads/validation/domain.md`，禁止猜測目標或把等待狀態當完成。
 - [ ] T092 確認 T089 部署前門檻與 T091 DNS／HTTPS 通過、無遺留 G0 發布；由管理員明確選擇正式欄位並確認最新範圍後發布，套用 Sites 外層公開存取及 DOWNLOADS_ENABLED=true。驗證正式 HTTPS 網域匿名最新／歷史下載、自製管理登入、未發布隔離與紀錄，補齊 FR-001／SC-010 的正式結果至 `specs/001-realms-world-downloads/validation/coverage.md` 與 `specs/001-realms-world-downloads/validation/release.md`；只有全部 FR／SC 均有通過證據才完成正式驗收，失敗立即關閉新下載、修正並重驗。（FR-001、SC-010）
 - [ ] T093 依 `specs/001-realms-world-downloads/validation/release.md` 的證據更新既有 PR #1 目的／規格／驗證與實際發布版本，完成必要檢查及審查後合併至 main；核實 GitHub 狀態確為 MERGED 並記錄 mergeCommit，草稿／關閉／自動合併排程均不算完成，未合併保留分支。
 - [ ] T094 依 `specs/001-realms-world-downloads/validation/release.md` 交付流程核對遠端 main 含 PR 實際合併結果、同步本機 main，必要時以合併後來源保存 Sites 版本並只重驗受影響的正式入口；在 PR 最終交付記錄保存合併與部署對應，不為回填文件直接新增未審查的 main 提交。
