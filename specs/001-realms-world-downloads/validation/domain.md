@@ -42,3 +42,11 @@
 版本 11 的來源為 `2ec580bab510d5a7a681c3d2f62b97e8e7fdaeac`，環境 revision 7，於 2026-09-14 16:21:40.432890 UTC 部署成功；TypeScript、ESLint 與五階段生產建置通過。內建瀏覽器重新載入正式管理頁，確認「管理員專用／世界與連線管理」新文字，再回首頁確認公開世界與下載按鈕正常。沒有因純文字修正重複執行相同世界下載。
 
 T091 的 DNS／HTTPS 設定與驗證已完成；T092 的完整驗收仍未完成。網站已依本次使用者明確要求公開，PR 保持草稿，沒有宣稱所有功能驗收或遊戲匯入完成。
+
+## 舊網域登入入口修正
+
+使用者回報登入顯示「這項操作未獲授權」。2026-09-14 16:28:26 至 16:29:24 UTC 的五筆 `/api/admin/login` 403 紀錄，其 Host、Origin 與 Referer 均為舊的 `realms-world-jkesbyebye.jkes109152.chatgpt.site`，Sec-Fetch-Site 為 same-origin。來源與正式 SITE_ORIGIN 不同，因此在密碼驗證前被拒絕，並非已確認的密碼錯誤。
+
+新增首頁與 `/admin` 頁面導覽的正式網域轉址：GET／HEAD 在非正式來源時以 307、no-store 前往 SITE_ORIGIN 對應路徑，目的地不採信查詢參數或 X-Forwarded-Host，且不轉送查詢內容與 Referer。正式網域不轉址；POST、API、密碼、CSRF 與下載票據不轉送。精確 Origin 驗證、Host-only Cookie、Microsoft 連線與既有公開範圍保持原狀。本次未更動任何 DNS。
+
+以人工來源驗證舊入口轉址、正式入口不循環、不採信外部目的地及不轉送寫入，連同現有安全原語共 14 項測試通過。正式登入結果及部署後瀏覽器轉址另於完成時記錄。
