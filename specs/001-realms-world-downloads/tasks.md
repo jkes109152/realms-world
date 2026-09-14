@@ -12,7 +12,7 @@ description: "Realms World 公開世界下載站的可追溯實作與驗收任�
 
 **治理依據**：[專案憲章 v3.0.0](../../.specify/memory/constitution.md)。
 
-**目前狀態**：共 95 項任務，已完成 T001～T023（準備、模型、共用核心與最小驗證入口）；65 項本機測試、型別、ESLint 與建置通過，證據見 [核心驗證](validation/core.md)。T024 已有 [部分真實平台結果](validation/g0-platform.md)，T024～T030 真實 G0 尚未通過。核取標記為目前進度，未勾選項目仍未完成；現有草稿 PR #1 持續用於本功能。
+**目前狀態**：共 95 項任務，已完成 T001～T023（準備、模型、共用核心與最小驗證入口）；68 項本機測試、型別、ESLint 與建置通過，證據見 [核心驗證](validation/core.md)。T024 已有 [部分真實平台結果](validation/g0-platform.md)，T024～T030 真實 G0 尚未通過。核取標記為目前進度，未勾選項目仍未完成；現有草稿 PR #1 持續用於本功能。
 
 ## 格式與執行規則
 
@@ -42,7 +42,7 @@ description: "Realms World 公開世界下載站的可追溯實作與驗收任�
 
 **目的**：只建立能力驗證所需的共用模型、最小安全登入、授權及串流核心；正式使用者故事必須等待 G0 通過。
 
-**入口／檢查點**：T006～T029 可建立最小驗證程式及必要共用核心，不建立完整產品頁面。T030 未通過時，T031 之後全部停止；等待真實授權或遊戲匯入不是完成。
+**入口／檢查點**：T006～T029 可建立最小驗證程式及必要共用核心，不建立完整產品頁面。T030 未通過時，不宣告 T031 之後完整故事通過；等待真實授權或遊戲匯入不是完成。依使用者 2026-09-14 的明確要求，T023 可延伸首頁管理員預覽及同核心公開 API 的人工驗證，公開總開關仍保持關閉。
 
 - [x] T006 在 `db/schema.ts` 定義 admin_accounts、admin_sessions、maintenance_operations 全部欄位：id「固定 1，主鍵與 CHECK，最多一列」；username「2～64 字元，小寫英文字母、數字、底線、點、連字號；唯一」；password_hash「含版本、參數、salt 與衍生結果的 scrypt 封裝」；credential_version「正整數；改密碼或維護重設遞增」；時間「UTC 毫秒」；token_digest／operation_digest 為主鍵、admin_id=1、action 限 bootstrap／reset，guard_passed 為 NOT NULL 且 CHECK=1；防重放摘要不依 30 天期限刪除。
 - [x] T007 在 `db/schema.ts` 加入 realm_connections、auth_attempts、realms、world_slots 全部欄位與關聯：connection id=1，generation「非遞減整數；開始新連接、取消及解除時推進」，status「disconnected、authorizing、connected、reauth_required」，credential_box「AES-GCM 封裝，可為 null」，owner_xuid「已核對擁有者穩定 ID；解除清空」，token_version「成功保存新授權時遞增」；auth_attempts「狀態為 pending → authorized／cancelled／denied／expired／failed」。
@@ -358,3 +358,9 @@ flowchart TD
 ## 2026-09-14 最新存檔範圍澄清
 
 使用者明確指定只發布最新存檔。依憲章 v3.0.0，本次發布範圍固定為 latest，包含所選欄位目前及之後官方提供的最新內容；不包含歷史備份。歷史功能與其實測仍保留為後續獨立能力，不能自動公開，也不再阻擋最新的發布與下載驗證。正式開放仍須完成適用於最新範圍的真實授權、續期、欄位、串流、匯入及安全驗收。歷史驗收未執行不等於完成；相關任務保留未勾選。
+
+## 2026-09-14 首頁預覽與每次最新下載
+
+依使用者要求擴充 T023：`components/WorldDownloads.tsx` 接上首頁已發布世界、安全 catalog 與原生附件；公開總開關關閉時，只有管理員 session 可經驗證路由預覽。`lib/downloads/public-api.ts` 與兩組 catch-all 路由承接相同工作／串流核心，所有公開入口仍受總開關保護。公開 API 人工案例涵蓋兩個新工作各自重新請求官方 latest、私有投影隔離、錯誤 capability、下架失效、歷史／任意 URL 拒絕與關閉後不得查詢、推進或兌換；管理 catalog 驗證匿名、失效 session 與參數注入拒絕。
+
+這些實作覆蓋 T031、T033～T041 的部分目標，但期限／故障完整契約、世界詳情頁、完整端對端與匿名真實驗收仍未完成，故不勾選整項。使用者回覆「尚未匯入」，T027、T030 及正式開放保持待完成。後續沿用目前檔案與共用核心，不另建第二套下載實作。

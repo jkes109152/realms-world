@@ -3,6 +3,7 @@ import { bindings } from "@/lib/db/client";
 import { connection, disconnect } from "@/lib/db/connections";
 import { startConnection, stepConnection, readConnectionState } from "@/lib/realms/connection-service";
 import { refreshWorlds } from "@/lib/realms/world-service";
+import { publicCatalog } from "@/lib/realms/public-catalog";
 import { setPublication } from "@/lib/realms/publication-service";
 import { inspectStoredWorldAssociation } from "@/lib/realms/association-inspection";
 import { publishLatestWorld } from "@/lib/realms/latest-publication-service";
@@ -13,7 +14,7 @@ import { consumeLimits, sourceDigest } from "@/lib/security/rate-limit";
 import type { Selection } from "@/lib/realms/types";
 
 type RouteContext = { params: Promise<{ operation: string }> };
-const readOperations = new Set(["connection", "worlds", "archives", "association", "download-status"]);
+const readOperations = new Set(["connection", "worlds", "catalog", "archives", "association", "download-status"]);
 const writeOperations = new Set(["connection-start", "connection-step", "connection-cancel", "disconnect", "publication", "downloads", "download-step", "redeem"]);
 function operationAllowed(operation: string, method: "GET" | "POST") {
   if (!readOperations.has(operation) && !writeOperations.has(operation)) throw new AppError("not_found", 404);
@@ -43,6 +44,7 @@ export async function GET(request: Request, context: RouteContext) {
     if ([...params.keys()].some((key) => !(["archives", "association"].includes(operation) ? ["worldId"] : operation === "download-status" ? ["jobId"] : []).includes(key))) throw new AppError("invalid_request");
     if (operation === "connection") return jsonResponse(await readConnectionState(bindings(), admin));
     if (operation === "worlds") return jsonResponse({ items: (await refreshWorlds(bindings())).results });
+    if (operation === "catalog") return jsonResponse(await publicCatalog(bindings()));
     if (operation === "association") return jsonResponse(await inspectStoredWorldAssociation(bindings(), id(params.get("worldId"))));
     if (operation === "archives") {
       const archives = await verificationArchives(bindings(), id(params.get("worldId")));

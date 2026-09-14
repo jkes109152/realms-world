@@ -4,7 +4,7 @@
 
 **依據**：[計畫](../plan.md)、[資料模型](../data-model.md)
 
-**狀態**：待實作；下列路由尚不存在。
+**狀態**：已實作管理員驗證入口及最新範圍的列表、詳情、建立、step、status 與兌換路由；正式公開總開關保持關閉。其餘完整管理、歷史及紀錄端點依任務清單待完成，本文同時記錄目標契約與已實作子集。
 
 ## 共通格式與保護
 
@@ -31,7 +31,7 @@ retryAfterSeconds 無適用值時為 null；可重試回應同時給 Retry-After
 
 ## 公開資料
 
-DOWNLOADS_ENABLED=false 時，以下公開資料及所有公開下載路由均回 503 temporarily_unavailable，不列出已設定發布的欄位、不建立／推進／兌換工作。唯一驗證例外為後述受管理員保護的 G0 路由；訪客不能以參數或標頭啟用例外。關閉總開關不取消已開始的附件串流。
+DOWNLOADS_ENABLED=false 時，以下公開資料及所有公開下載路由均回 503 downloads_closed，不列出已設定發布的欄位、不建立／推進／兌換工作。唯一驗證例外為後述受管理員保護的 G0 路由；訪客不能以參數或標頭啟用例外。關閉總開關不取消已開始的附件串流。
 
 | 方法與路徑 | 輸入 | data 與結果 |
 |---|---|---|
@@ -39,7 +39,7 @@ DOWNLOADS_ENABLED=false 時，以下公開資料及所有公開下載路由均�
 | GET /api/worlds/{worldId} | 公開 ID | `{world: PublicWorld, latest: Archive, fetchedAt}` |
 | GET /api/worlds/{worldId}/archives | 公開 ID | `{items: Archive[], complete: true, fetchedAt}`，最新至最舊的全部可用歷史 |
 
-`PublicWorld = {id, displayName, description, availability, fetchedAt}`；availability 為 available／temporarily_unavailable。description 為純文字，不渲染任意 HTML。資料只來自仍發布且目前連線可用的欄位；不回傳帳號、Realm 內部 ID 或成員資料。
+`PublicWorld = {id, displayName, description, availability, fetchedAt}`；availability 為 available／temporarily_unavailable。description 為純文字，不渲染任意 HTML。資料只來自仍發布、歸屬已核對且世代與擁有者相符的欄位；連線暫時不可用時保留安全投影並標示不可下載，不回傳帳號、Realm 內部 ID 或成員資料。
 
 `Archive = {id, kind, savedAt, sizeBytes, gameVersion}`；kind=latest／backup，savedAt、sizeBytes、gameVersion 可為 null；sizeBytes 為十進位字串。latest.id 固定為 latest，歷史 id 是網站接受的 opaque 選擇值，只在該欄位內有意義。清單不混入其他欄位，伺服器重新核對歸屬。
 
@@ -57,6 +57,8 @@ fetchedAt 是資料取得時間，不冒充存檔時間。歷史有分頁就全�
 | POST /api/downloads/redeem | 原生 form POST，同源 Origin；欄位 ticket | 200 附件串流；開始前錯誤為無附件標頭的繁體中文 HTML |
 
 建立請求先原子限流、主庫確認發布與連線、寫入工作及請求紀錄，不等待完整官方準備才回應。介面在按下時立即顯示準備中，以符合 2 秒回饋；狀態秘密只放頁面記憶體，不進 URL／localStorage／日誌。
+
+目前公開建立只接受 `{selection:{kind:"latest"}}`，backup 與任何額外欄位均拒絕；歷史契約保留待日後另行啟用。每次新工作重新核對官方擁有者／欄位並請求固定 `/archive/download/world/{realm}/{slot}/latest`；不能跨工作重用加密來源描述。首頁讀取發布清單不會準備或下載世界，fetchedAt 表示世界資料核對時間，存檔未知欄位保持 null。
 
 step 驗證 capability、世代、發布、到期與 next_poll_at。每次只推進一個外部階段，短租約避免同時打上游；過早呼叫給 429 與 Retry-After。同一次 transition 只核發一次票據；若回應遺失，使用者重建工作，不靠 GET 取回票據。工作到期 10 分鐘；上游世界準備最多 20 次，間隔取官方值，沒有時初始 5 秒。上游要求較長間隔時照辦，不能以密集重試繞過。
 
@@ -117,7 +119,7 @@ G0 共用核心階段即提供最小發布／下架服務；後續 US3 延伸同
 
 | 方法與路徑 | operation 白名單 | 輸入與行為 |
 |---|---|---|
-| GET /api/admin/verification/{operation} | connection、worlds、archives、download-status | connection／worlds 沿用管理投影；archives 以 worldId 查已核對且已發布欄位；download-status 以 jobId 與 X-Download-Capability 查同一工作 |
+| GET /api/admin/verification/{operation} | connection、worlds、catalog、archives、download-status | connection／worlds 沿用管理投影；catalog 不接受參數，只回已發布世界的安全投影；archives 以 worldId 查已核對且已發布欄位；download-status 以 jobId 與 X-Download-Capability 查同一工作 |
 | POST /api/admin/verification/{operation} | connection-start、connection-step、connection-cancel、disconnect、publication、downloads、download-step、redeem | 只委派至同一授權、發布、下載與串流核心；不接受任意 URL／SQL／操作名稱 |
 
 G0 另提供 GET association，僅接受 worldId，要求有效管理員 session，並將 worldId 對應至目前連線世代且擁有者相符的欄位；之後只讀取該 Realm 的官方詳情及備份端點。它可在未發布時研究歷史歸屬，並非最新發布的必要條件，但不提供檔案、不變更發布與作用中欄位。瀏覽器只收到備份數量與待核對原因；安全診斷只記欄位名稱／型別、數量及明示 slot 欄位的相等計數，不記私人原始值、ID、名稱或憑證。結構摘要是研究證據，不能直接將欄位標為 verified。
@@ -129,6 +131,8 @@ GET connection 附加 `pendingAttempt`：僅目前有效 session、credential_ve
 每次驗證請求都要求有效自製管理員 session；所有 POST 要求精確 Origin 與 CSRF。redeem 使用原生表單 `{ticket,csrfToken}`，以 csrfToken 欄位驗證 session 的 CSRF 摘要，其餘 POST 使用 X-CSRF-Token。此表單不使用 JSON；附件、錯誤 HTML 與大小限制沿用正式兌換。DOWNLOADS_ENABLED=false 只在上述伺服器已驗證的管理員路由中可略過；建立、step、status、票據消耗及最後開始串流仍檢查已發布、擁有權／歸屬與版本，不允許下載未發布欄位。
 
 G0 時 Sites 外層保持受保護，公開路由保持停用；測試包含未登入、失效 session、CSRF、未發布欄位、舊票與錯誤方法的拒絕。每次驗證結束或中止前明確下架此次選取的欄位以推進版本；若中途失聯，下次先完成下架再繼續。正式啟用總開關前須核對無遺留驗收發布，重新由管理員選取正式範圍。
+
+依使用者要求，G0 額外提供首頁的管理員預覽：公開列表明確回 downloads_closed 後，僅有效管理員 session 可讀取 catalog，再沿用受保護的驗證下載路由及 CSRF。首頁明示匿名下載尚未開放；未登入只顯示關閉狀態，不顯示私有列表。此流程不啟用公開總開關，也不取代遊戲匯入與正式驗收。
 
 GET worlds 需要續期時回 503 authorization_refreshing 及 Retry-After，不把尚未就緒的授權當作世界空清單。管理頁同一次讀取可依此訊號自動接續，最多 12 次請求、120 秒；至少等待 1 秒且不短於伺服器指定間隔，離頁取消。其他錯誤不自動重送，不改變發布或連線世代。此接續機制只涵蓋讀取世界，不自動重建下載或重送發布。
 

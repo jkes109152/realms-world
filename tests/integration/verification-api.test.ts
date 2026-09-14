@@ -22,11 +22,13 @@ function request(operation: string, token?: string, body?: unknown, csrf?: strin
   });
 }
 it("驗證入口要求有效管理員 session", async () => {
+  expect((await GET(request("catalog"), context("catalog"))).status).toBe(401);
   expect((await GET(request("association"), context("association"))).status).toBe(401);
   expect((await GET(request("connection"), context("connection"))).status).toBe(401);
   const session = await admin();
   await env.DB.prepare("DELETE FROM admin_sessions").run();
   expect((await GET(request("connection", session.token), context("connection"))).status).toBe(401);
+  expect((await GET(request("catalog", session.token), context("catalog"))).status).toBe(401);
 });
 it("未知操作、方法錯誤、缺 CSRF 與跨來源操作均拒絕", async () => {
   const session = await admin();
@@ -50,6 +52,11 @@ it("DOWNLOADS_ENABLED=false 仍只允許管理員讀取安全連線狀態", asyn
   const response = await GET(request("connection", session.token), context("connection"));
   expect(response.status).toBe(200);
   expect(JSON.stringify(await response.json())).not.toMatch(/credential_box|refresh_token|xstsToken/);
+  const catalog = await GET(request("catalog", session.token), context("catalog"));
+  expect(catalog.status).toBe(200);
+  expect(await catalog.json()).toMatchObject({ data: { items: [] } });
+  const injected = new Request(request("catalog", session.token).url + "?includePrivate=true", request("catalog", session.token));
+  expect((await GET(injected, context("catalog"))).status).toBe(400);
 });
 it("已登入的管理員可建立尚未對外請求的授權工作", async () => {
   const session = await admin();

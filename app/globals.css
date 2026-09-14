@@ -189,6 +189,19 @@ body { font-family: "Segoe UI", "Microsoft JhengHei", sans-serif; font-size: 16p
 .rw-check { display: flex; align-items: flex-start; gap: 10px; margin-top: 20px; font-size: 14px; }.rw-check [data-slot="checkbox"] { margin-top: 5px; accent-color: var(--primary); }
 .rw-archive { display: flex; align-items: center; justify-content: space-between; gap: 20px; font-size: 14px; padding: 12px 0; border-bottom: 1px solid var(--border); }
 .rw-transfer-state { font-size: 23px; color: var(--primary); margin-bottom: 8px; }
+.rw-public-main { flex: 1; padding: 32px 0 50px; }
+.rw-public-hero { max-width: 720px; margin-bottom: 24px; }
+.rw-public-hero h1 { font-size: clamp(28px, 4vw, 38px); font-weight: 650; line-height: 1.35; letter-spacing: -.025em; margin: 0 0 12px; }
+.rw-public-main>.rw-notice { margin: 24px 0; }
+.rw-public-section { margin: 28px 0; }.rw-public-section h2 { font-size: 22px; font-weight: 600; }
+.rw-public-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 310px), 1fr)); gap: 24px; }
+.rw-world-card { border: 1px solid var(--border); background: var(--card); border-radius: 6px; padding: 24px; max-width: 560px; }
+.rw-world-card h3 { font-size: 25px; font-weight: 600; margin: 12px 0; overflow-wrap: anywhere; }
+.rw-card-icon { width: 42px; height: 42px; border: 1px solid #52735c; background: #22392b; display: grid; place-items: center; margin-bottom: 18px; color: var(--primary); }
+.rw-card-icon svg { width: 25px; height: 25px; }.rw-world-card button { margin-top: 20px; }
+.rw-source-time { font-size: 12px; color: var(--muted-foreground); margin-top: 17px; }
+.rw-public-transfer h2 { margin: 8px 0 12px; color: var(--primary); font-size: 23px; }.rw-public-transfer form { margin-top: 23px; }
+.rw-public-admin { margin-top: 40px; }
 @media (max-width: 700px) {
   .rw-shell { padding: 0 20px; }.rw-header { min-height: 78px; }.rw-header>.rw-kicker { display: none; }
   .rw-brand { font-size: 12px; gap: 8px; }.rw-status { font-size: 12px; }.rw-intro { padding: 62px 0 75px; }
