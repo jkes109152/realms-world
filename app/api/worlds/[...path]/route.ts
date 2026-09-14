@@ -1,0 +1,5 @@
+import { bindings } from "@/lib/db/client";
+import { worldsRequest } from "@/lib/downloads/public-api";
+type Context = { params: Promise<{path:string[]}> };
+export async function GET(request: Request, context: Context) { return worldsRequest(request, (await context.params).path, bindings()); }
+export const POST = GET;

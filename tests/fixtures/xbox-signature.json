@@ -1,0 +1,21 @@
+{
+  "description": "人工測試金鑰與固定向量，無任何真實授權能力；由獨立 Node crypto 產生。",
+  "now": 0,
+  "url": "https://device.auth.xboxlive.com/device/authenticate",
+  "payload": "{}",
+  "privateJwk": {
+    "kty": "EC",
+    "x": "dFcQ2-RxmNbEyBV4Q8jgLPiI3gB4lRc3RTb3yfLdoZU",
+    "y": "sg2TjXF0SaTf3y044wPbrs2LFIRN1Wq--HceY5gpfNo",
+    "crv": "P-256",
+    "d": "uEHge5bmlUFZLAfUWraJ6ipSNp589fu1JmBHjZZa3Hk"
+  },
+  "publicJwk": {
+    "kty": "EC",
+    "x": "dFcQ2-RxmNbEyBV4Q8jgLPiI3gB4lRc3RTb3yfLdoZU",
+    "y": "sg2TjXF0SaTf3y044wPbrs2LFIRN1Wq--HceY5gpfNo",
+    "crv": "P-256"
+  },
+  "preimageHex": "0000000100019db1ded53e800000504f5354002f6465766963652f61757468656e74696361746500007b7d00",
+  "headerBase64": "AAAAAQGdsd7VPoAAN5PBTKCxAw/fp0ryNiVTRlay3nF+qfghljbyD+O5jl6loEl5A7UaRH0vWEAyZZOaIsW+izjYpk0Mzid8duqfPA=="
+}
